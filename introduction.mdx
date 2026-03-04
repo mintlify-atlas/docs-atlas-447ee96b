@@ -1,0 +1,68 @@
+---
+title: Introduction
+description: Overview of the Kount Android SDK for fraud detection and device data collection
+---
+
+The Kount Android SDK helps you integrate Kount's fraud detection solution into your Android applications. The SDK collects device data and behavioral analytics to help identify and prevent fraudulent transactions.
+
+## What is the Kount Android SDK?
+
+The Kount Android SDK is a lightweight library that performs device data collection (DDC) on Android devices. It gathers device information and transmits it securely to Kount's servers, where it's analyzed as part of your fraud detection workflow.
+
+## Key Features
+
+- **Device Data Collection**: Automatically collects device fingerprinting data
+- **Behavioral Analytics**: Optional analytics collection for enhanced fraud detection
+- **Location Data**: City-level location information when permissions are granted
+- **Session Management**: Automatic session ID generation and management
+- **Instant App Support**: Compatible with Android Instant Apps
+- **Completion Handlers**: Callbacks for success and failure events
+- **Play Store Integration**: Utilizes Google Play Store libraries when available
+
+## What Data is Collected?
+
+The SDK collects various device attributes to create a unique device fingerprint:
+
+- Device hardware information
+- Operating system version and configuration
+- Network information
+- Location data (with user permission)
+- UI interaction analytics (when enabled)
+- Timing metrics
+
+<Note>
+  All data collection respects user privacy and Android permissions. Location data is only collected if the user grants the `ACCESS_FINE_LOCATION` permission.
+</Note>
+
+## Requirements
+
+Before integrating the Kount Android SDK, ensure you have:
+
+- **Kount Integration**: Active Kount fraud detection account
+- **Android Studio**: Latest version with Android SDK
+- **Minimum SDK**: API 26 (Android 8.0 Oreo) or higher
+- **Target SDK**: API 29 (Android 10) or higher recommended for all features
+- **Instant App Library**: Required at compile time, even for non-Instant Apps
+
+<Warning>
+  The current SDK version requires minimum Android API 26 (Oreo). If you need support for older Android versions, contact Kount support.
+</Warning>
+
+## Use Cases
+
+- E-commerce checkout flows
+- Account registration and login
+- Payment processing
+- High-risk transactions
+- Any scenario requiring fraud risk assessment
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Set up the SDK in your Android project
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started with your first integration
+  </Card>
+</CardGroup>

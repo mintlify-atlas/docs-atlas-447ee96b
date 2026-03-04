@@ -1,0 +1,215 @@
+---
+title: Installation
+description: Step-by-step guide to install and configure the Kount Android SDK in your project
+---
+
+This guide walks you through adding the Kount Android SDK to your Android application.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- Android Studio installed
+- A Kount merchant ID (contact Kount if you don't have one)
+- Minimum Android SDK 26 (Oreo) configured in your project
+
+## Add JitPack Repository
+
+The Kount Android SDK is distributed via JitPack. Add the JitPack repository to your project-level `build.gradle` file:
+
+<CodeGroup>
+```groovy build.gradle (Project)
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
+```
+
+```kotlin build.gradle.kts (Project)
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+```
+</CodeGroup>
+
+## Add Dependencies
+
+Add the Kount SDK and required dependencies to your app-level `build.gradle` file:
+
+<CodeGroup>
+```groovy build.gradle (Module: app)
+dependencies {
+    // Kount Data Collector SDK
+    implementation 'com.github.Kount:kount-android-sdk:4.3.2'
+    
+    // Required: Instant Apps library (even if not building an Instant App)
+    implementation 'com.google.android.instantapps:instantapps:1.1.0'
+    
+    // Required: Networking
+    implementation 'com.android.volley:volley:1.2.1'
+    
+    // Required: JSON parsing
+    implementation 'com.google.code.gson:gson:2.8.6'
+    
+    // Recommended: Kotlin support
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+}
+```
+
+```kotlin build.gradle.kts (Module: app)
+dependencies {
+    // Kount Data Collector SDK
+    implementation("com.github.Kount:kount-android-sdk:4.3.2")
+    
+    // Required: Instant Apps library (even if not building an Instant App)
+    implementation("com.google.android.instantapps:instantapps:1.1.0")
+    
+    // Required: Networking
+    implementation("com.android.volley:volley:1.2.1")
+    
+    // Required: JSON parsing
+    implementation("com.google.code.gson:gson:2.8.6")
+    
+    // Recommended: Kotlin support
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+}
+```
+</CodeGroup>
+
+<Note>
+  Replace `4.3.2` with the latest SDK version. Check the [changelog](https://github.com/Kount/kount-android-sdk/blob/master/CHANGELOG.md) for the most recent release.
+</Note>
+
+## Configure Minimum SDK Version
+
+Ensure your app's minimum SDK version meets the requirements in your `build.gradle`:
+
+<CodeGroup>
+```groovy build.gradle (Module: app)
+android {
+    compileSdkVersion 34
+    
+    defaultConfig {
+        applicationId "com.example.myapp"
+        minSdkVersion 26  // Android 8.0 Oreo minimum
+        targetSdkVersion 34
+    }
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+```
+
+```kotlin build.gradle.kts (Module: app)
+android {
+    compileSdk = 34
+    
+    defaultConfig {
+        applicationId = "com.example.myapp"
+        minSdk = 26  // Android 8.0 Oreo minimum
+        targetSdk = 34
+    }
+    
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+```
+</CodeGroup>
+
+## Instant App Support
+
+The Instant Apps library must be included at compile time, even if you're not building an Instant App:
+
+```groovy
+implementation 'com.google.android.instantapps:instantapps:1.1.0'
+```
+
+<Warning>
+  Due to Android restrictions on Instant Apps, data collection may be degraded compared to full Android applications. However, the library must still be included for the SDK to function properly.
+</Warning>
+
+## Add Permissions
+
+Add the following permissions to your `AndroidManifest.xml`:
+
+```xml AndroidManifest.xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.myapp">
+
+    <!-- Required for network communication -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
+    <!-- Optional: For location-based data collection -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <application
+        ...
+    </application>
+</manifest>
+```
+
+<Note>
+  Location permissions are optional but recommended for more accurate fraud detection. You must request these permissions at runtime on Android 6.0 (API 23) and higher.
+</Note>
+
+## Sync Project
+
+After making these changes:
+
+1. Click **Sync Now** in the Android Studio banner, or
+2. Select **File > Sync Project with Gradle Files**
+
+Once the sync completes successfully, you're ready to initialize the SDK.
+
+## Verify Installation
+
+To verify the SDK is properly installed, add this import to any Kotlin or Java file:
+
+<CodeGroup>
+```kotlin Kotlin
+import com.kount.api.KountSDK
+```
+
+```java Java
+import com.kount.api.KountSDK;
+```
+</CodeGroup>
+
+If the import resolves without errors, the installation was successful.
+
+## Next Steps
+
+<Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+  Learn how to initialize the SDK and start collecting device data
+</Card>

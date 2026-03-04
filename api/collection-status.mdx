@@ -1,0 +1,251 @@
+---
+title: 'CollectionStatus'
+description: 'Enum representing the status of device data collection'
+---
+
+## Overview
+
+The `CollectionStatus` enum represents the various states of the device data collection process. These status values are returned by the `KountSDK.getCollectionStatus()` method.
+
+### Package
+
+```
+com.kount.api.internal.analytics.entities.CollectionStatus
+```
+
+## Status Values
+
+### COMPLETED
+
+Indicates that device data collection has completed successfully.
+
+```kotlin
+CollectionStatus.COMPLETED
+```
+
+When the status is `COMPLETED`, the session ID is available and can be retrieved using `KountSDK.getSessionId()`. You can proceed with your transaction or checkout flow.
+
+**Example:**
+
+```kotlin
+val status = KountSDK.getCollectionStatus()
+if (status == CollectionStatus.COMPLETED.toString()) {
+    val sessionId = KountSDK.getSessionId()
+    // Proceed with transaction
+    submitOrder(sessionId)
+}
+```
+
+```java
+String status = KountSDK.INSTANCE.getCollectionStatus();
+if (status.equals(CollectionStatus.COMPLETED.toString())) {
+    String sessionId = KountSDK.INSTANCE.getSessionId();
+    // Proceed with transaction
+    submitOrder(sessionId);
+}
+```
+
+### FAILED
+
+Indicates that device data collection has failed.
+
+```kotlin
+CollectionStatus.FAILED
+```
+
+When the status is `FAILED`, the collection process encountered an error. The error details are provided through the failure callback when using `collectForSession()`. You may want to retry collection or proceed with your transaction flow without the enhanced device data.
+
+**Example:**
+
+```kotlin
+val status = KountSDK.getCollectionStatus()
+if (status == CollectionStatus.FAILED.toString()) {
+    Log.e("Kount", "Collection failed")
+    // Handle failure - retry or proceed without device data
+    retryCollection()
+}
+```
+
+```java
+String status = KountSDK.INSTANCE.getCollectionStatus();
+if (status.equals(CollectionStatus.FAILED.toString())) {
+    Log.e("Kount", "Collection failed");
+    // Handle failure - retry or proceed without device data
+    retryCollection();
+}
+```
+
+### IN_PROGRESS
+
+Indicates that device data collection is currently in progress.
+
+```kotlin
+CollectionStatus.IN_PROGRESS
+```
+
+When the status is `IN_PROGRESS`, the collection process is actively gathering device data. Wait for the process to complete before proceeding with transactions. You can monitor this status to show loading indicators or progress feedback to users.
+
+**Example:**
+
+```kotlin
+val status = KountSDK.getCollectionStatus()
+when (status) {
+    CollectionStatus.IN_PROGRESS.toString() -> {
+        // Show loading indicator
+        progressBar.visibility = View.VISIBLE
+        checkoutButton.isEnabled = false
+    }
+    CollectionStatus.COMPLETED.toString() -> {
+        // Hide loading, enable checkout
+        progressBar.visibility = View.GONE
+        checkoutButton.isEnabled = true
+    }
+    CollectionStatus.FAILED.toString() -> {
+        // Handle error state
+        progressBar.visibility = View.GONE
+        showErrorMessage()
+    }
+}
+```
+
+```java
+String status = KountSDK.INSTANCE.getCollectionStatus();
+switch (status) {
+    case CollectionStatus.IN_PROGRESS:
+        // Show loading indicator
+        progressBar.setVisibility(View.VISIBLE);
+        checkoutButton.setEnabled(false);
+        break;
+    case CollectionStatus.COMPLETED:
+        // Hide loading, enable checkout
+        progressBar.setVisibility(View.GONE);
+        checkoutButton.setEnabled(true);
+        break;
+    case CollectionStatus.FAILED:
+        // Handle error state
+        progressBar.setVisibility(View.GONE);
+        showErrorMessage();
+        break;
+}
+```
+
+## Usage
+
+### Checking Status
+
+The `getCollectionStatus()` method returns the status as a string representation:
+
+```kotlin
+val status: String = KountSDK.getCollectionStatus()
+
+// Compare using toString()
+if (status == CollectionStatus.COMPLETED.toString()) {
+    // Collection is complete
+}
+```
+
+```java
+String status = KountSDK.INSTANCE.getCollectionStatus();
+
+// Compare using toString()
+if (status.equals(CollectionStatus.COMPLETED.toString())) {
+    // Collection is complete
+}
+```
+
+### Status Flow
+
+The typical status flow during a collection session:
+
+1. **Initial State** - No status or empty before collection starts
+2. **IN_PROGRESS** - When `collectForSession()` is called
+3. **COMPLETED** or **FAILED** - Final state when collection finishes
+
+```kotlin
+// Start collection
+KountSDK.collectForSession(
+    context,
+    { sessionId ->
+        // Status is now COMPLETED
+        val status = KountSDK.getCollectionStatus()
+        Log.d("Kount", "Status: $status") // "COMPLETED"
+    },
+    { sessionId, error ->
+        // Status is now FAILED
+        val status = KountSDK.getCollectionStatus()
+        Log.d("Kount", "Status: $status") // "FAILED"
+    }
+)
+
+// Status is IN_PROGRESS during collection
+Log.d("Kount", "Status: ${KountSDK.getCollectionStatus()}") // "IN_PROGRESS"
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Monitor During Collection" icon="clock">
+    Check the status while collection is in progress to provide user feedback.
+  </Card>
+  
+  <Card title="Handle All States" icon="list-check">
+    Implement handling for all three status values in your application logic.
+  </Card>
+  
+  <Card title="Use Callbacks" icon="bell">
+    Prefer using the success/failure callbacks instead of polling the status.
+  </Card>
+  
+  <Card title="Log Status Changes" icon="file-lines">
+    Log status changes during development to understand the collection flow.
+  </Card>
+</CardGroup>
+
+### Example: Status Monitoring
+
+```kotlin
+class CheckoutActivity : AppCompatActivity() {
+    
+    private fun initiateCollection() {
+        updateUI(CollectionStatus.IN_PROGRESS.toString())
+        
+        KountSDK.collectForSession(
+            this,
+            { sessionId ->
+                updateUI(KountSDK.getCollectionStatus())
+                proceedToCheckout(sessionId)
+            },
+            { sessionId, error ->
+                updateUI(KountSDK.getCollectionStatus())
+                handleCollectionError(error)
+            }
+        )
+    }
+    
+    private fun updateUI(status: String) {
+        when (status) {
+            CollectionStatus.IN_PROGRESS.toString() -> {
+                statusText.text = "Collecting device data..."
+                progressBar.visibility = View.VISIBLE
+                checkoutButton.isEnabled = false
+            }
+            CollectionStatus.COMPLETED.toString() -> {
+                statusText.text = "Ready to checkout"
+                progressBar.visibility = View.GONE
+                checkoutButton.isEnabled = true
+            }
+            CollectionStatus.FAILED.toString() -> {
+                statusText.text = "Collection failed - retrying..."
+                progressBar.visibility = View.GONE
+                retryButton.visibility = View.VISIBLE
+            }
+        }
+    }
+}
+```
+
+## Related
+
+- [KountSDK](/api/kount-sdk) - Main SDK class with `getCollectionStatus()` method
+- [Success Callback](/api/success-callback) - Called when status becomes COMPLETED
+- [Failure Callback](/api/failure-callback) - Called when status becomes FAILED

@@ -1,0 +1,258 @@
+---
+title: "Java Integration"
+description: "Complete guide for integrating the Kount Android SDK using Java"
+---
+
+## Overview
+
+This guide demonstrates how to integrate the Kount Android SDK in a Java-based Android application. You'll learn how to initialize the SDK, configure it, and collect device data for fraud detection.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+- Android Studio installed
+- Minimum Android API level 21 (Android 5.0)
+- A valid Kount Merchant ID
+- The Kount Android SDK added as a dependency
+
+## Required Imports
+
+Add the following imports to your Activity:
+
+```java
+import com.kount.api.KountSDK;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+```
+
+## Basic Integration
+
+### Step 1: Initialize the SDK
+
+In your `MainActivity.onCreate()` method, configure the Kount SDK:
+
+```java
+public class MainActivity extends AppCompatActivity implements ActivityCompat.OnRequestPermissionsResultCallback {
+    
+    static final String MERCHANT_ID = "999999"; // Insert your valid merchant ID
+    static final int ENVIRONMENT = KountSDK.ENVIRONMENT_TEST;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        
+        // Configure the SDK
+        KountSDK.INSTANCE.setMerchantId(MERCHANT_ID);
+        KountSDK.INSTANCE.setCollectAnalytics(true);
+        KountSDK.INSTANCE.setEnvironment(ENVIRONMENT);
+        
+        // Rest of your initialization code
+    }
+}
+```
+
+<Note>
+For production environments, use `KountSDK.ENVIRONMENT_PRODUCTION` instead of `ENVIRONMENT_TEST`.
+</Note>
+
+### Step 2: Collect Device Data
+
+Once configured, start the data collection process:
+
+```java
+KountSDK.INSTANCE.collectForSession(this,
+    (sessionId) -> {
+        // Success callback
+        Log.d("TAG", "Collection completed with sessionId: " + sessionId);
+        Log.d("TAG", "DDC status is " + KountSDK.INSTANCE.getCollectionStatus());
+        return null;
+    },
+    (sessionId, error) -> {
+        // Failure callback
+        Log.d("TAG", "Collection failed with sessionId: " + sessionId + ", error: " + error);
+        Log.d("TAG", "DDC status is " + KountSDK.INSTANCE.getCollectionStatus());
+        return null;
+    }
+);
+```
+
+### Step 3: Retrieve Session ID
+
+After collection, retrieve the session ID to send to your backend:
+
+```java
+public class CollectionActivity extends AppCompatActivity {
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_collection);
+        
+        // Get the session ID
+        final String deviceSessionID = KountSDK.INSTANCE.getSessionId();
+        
+        // Get collection status
+        String status = KountSDK.INSTANCE.getCollectionStatus();
+        
+        // Display or send to your server
+        Log.d("TAG", "Session ID: " + deviceSessionID);
+        Log.d("TAG", "Collection Status: " + status);
+    }
+}
+```
+
+## Complete Example
+
+Here's a complete example integrating all components:
+
+```java
+package com.kount.checkoutexample;
+
+import android.Manifest;
+import android.app.Activity;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.Bundle;
+import android.util.Log;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import com.kount.api.KountSDK;
+
+public class MainActivity extends AppCompatActivity implements ActivityCompat.OnRequestPermissionsResultCallback {
+
+    static final String MERCHANT_ID = "999999";
+    static final int ENVIRONMENT = KountSDK.ENVIRONMENT_TEST;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        
+        // Initialize SDK
+        KountSDK.INSTANCE.setMerchantId(MERCHANT_ID);
+        KountSDK.INSTANCE.setCollectAnalytics(true);
+        KountSDK.INSTANCE.setEnvironment(ENVIRONMENT);
+        
+        // Check collection status
+        Log.d("TAG", "DDC status is " + KountSDK.INSTANCE.getCollectionStatus());
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Request location permission for enhanced data collection
+            requestLocationPermission(this);
+        } else {
+            // Start collection without permission check
+            startDataCollection();
+        }
+    }
+    
+    private void startDataCollection() {
+        KountSDK.INSTANCE.collectForSession(this,
+            (sessionId) -> {
+                Log.d("TAG", "Success completed with sessionId " + sessionId);
+                Log.d("TAG", "DDC status is " + KountSDK.INSTANCE.getCollectionStatus());
+                return null;
+            },
+            (sessionId, error) -> {
+                Log.d("TAG", "Failed with sessionId " + error + ", " + sessionId);
+                Log.d("TAG", "DDC status is " + KountSDK.INSTANCE.getCollectionStatus());
+                return null;
+            }
+        );
+    }
+    
+    private void requestLocationPermission(Activity activity) {
+        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                activity,
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                KountSDK.REQUEST_PERMISSION_LOCATION
+            );
+        } else {
+            startDataCollection();
+        }
+    }
+    
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+            startDataCollection();
+            
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d("TAG", "Location permission granted");
+            } else {
+                Log.d("TAG", "Location permission denied");
+            }
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
+}
+```
+
+## Checking Collection Status
+
+The SDK provides several collection status states:
+
+```java
+import com.kount.api.internal.analytics.entities.CollectionStatus;
+
+String status = KountSDK.INSTANCE.getCollectionStatus();
+
+if (status.equals(CollectionStatus.FAILED.toString())) {
+    // Handle failure
+    Log.e("TAG", "Collection failed: " + status);
+} else if (status.equals(CollectionStatus.COMPLETED.toString())) {
+    // Collection successful
+    String sessionId = KountSDK.INSTANCE.getSessionId();
+    // Send sessionId to your server
+}
+```
+
+<Warning>
+Always check the collection status before sending the session ID to your backend. Sending an incomplete or failed session ID may result in inaccurate fraud detection.
+</Warning>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Early Initialization" icon="rocket">
+    Initialize the SDK as early as possible in your app lifecycle, preferably in `onCreate()` of your main Activity or Application class.
+  </Card>
+  
+  <Card title="Handle Callbacks" icon="code">
+    Always implement both success and failure callbacks to handle all scenarios gracefully.
+  </Card>
+  
+  <Card title="Check Permissions" icon="shield">
+    Request location permissions for enhanced device data collection and improved fraud detection accuracy.
+  </Card>
+  
+  <Card title="Log Status" icon="file-lines">
+    Monitor collection status throughout the session to debug integration issues.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration Options" icon="gear" href="/guides/configuration">
+    Learn about all available SDK configuration options
+  </Card>
+  
+  <Card title="Permission Handling" icon="lock" href="/guides/permissions">
+    Detailed guide on handling location permissions
+  </Card>
+  
+  <Card title="Kotlin Integration" icon="code" href="/guides/kotlin-integration">
+    See how to integrate using Kotlin
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api/kount-sdk">
+    Complete API documentation
+  </Card>
+</CardGroup>

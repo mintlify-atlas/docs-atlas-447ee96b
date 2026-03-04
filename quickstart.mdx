@@ -1,80 +1,461 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with the Kount Android SDK in minutes
 ---
 
-## Get started in three steps
+This quickstart guide walks you through integrating the Kount Android SDK into your Android application. You'll have data collection running in under 10 minutes.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, ensure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+- Android Studio installed
+- A Kount merchant ID (contact Kount if you don't have one)
+- Target Android API 26 (Oreo) or higher
+- Basic familiarity with Android development
 
-### Step 2: Deploy your changes
+## Step 1: Add Dependencies
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+Add the Kount Data Collector to your app's `build.gradle` file:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+<CodeGroup>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+```gradle Groovy DSL
+repositories {
+    maven { url 'https://jitpack.io' }
+}
 
-### Step 3: Go live
+dependencies {
+    implementation 'com.kount:datacollector:5.0.0'
+    implementation 'com.google.android.instantapps:instantapps:1.1.0'
+    implementation 'com.android.volley:volley:1.2.1'
+    implementation 'com.google.code.gson:gson:2.8.6'
+}
+```
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+```gradle Kotlin DSL
+repositories {
+    maven("https://jitpack.io")
+}
 
-## Next steps
+dependencies {
+    implementation("com.kount:datacollector:5.0.0")
+    implementation("com.google.android.instantapps:instantapps:1.1.0")
+    implementation("com.android.volley:volley:1.2.1")
+    implementation("com.google.code.gson:gson:2.8.6")
+}
+```
 
-Now that you have your docs running, explore these key features:
+</CodeGroup>
 
-<CardGroup cols={2}>
+Sync your project with Gradle files.
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+## Step 2: Configure SDK
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+Initialize the SDK in your Activity's `onCreate()` method:
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin MainActivity.kt
+    import com.kount.api.KountSDK
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+    class MainActivity : AppCompatActivity() {
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+            setContentView(R.layout.activity_main)
+            
+            // Configure the SDK
+            KountSDK.setMerchantId("999999") // Replace with your merchant ID
+            KountSDK.setEnvironment(KountSDK.ENVIRONMENT_TEST)
+            KountSDK.setCollectAnalytics(true)
+        }
+    }
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java MainActivity.java
+    import com.kount.api.KountSDK;
 
-</CardGroup>
+    public class MainActivity extends AppCompatActivity {
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.activity_main);
+            
+            // Configure the SDK
+            KountSDK.INSTANCE.setMerchantId("999999"); // Replace with your merchant ID
+            KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_TEST);
+            KountSDK.INSTANCE.setCollectAnalytics(true);
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  Replace `"999999"` with your actual merchant ID provided by Kount. Use `ENVIRONMENT_TEST` for development and `ENVIRONMENT_PRODUCTION` for production builds.
 </Note>
+
+## Step 3: Request Location Permission
+
+Add location permission to your `AndroidManifest.xml`:
+
+```xml AndroidManifest.xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+```
+
+Request the permission at runtime for Android M and above:
+
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                KountSDK.REQUEST_PERMISSION_LOCATION
+            )
+        }
+    }
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                KountSDK.REQUEST_PERMISSION_LOCATION
+            );
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Info>
+  Location permission is optional but recommended for enhanced fraud detection. The SDK will work without it, but with reduced data collection.
+</Info>
+
+## Step 4: Collect Device Data
+
+Start data collection when you need to track a user session:
+
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            // Success - collection completed
+            Log.d("Kount", "Collection completed with session ID: $sessionId")
+            
+            // Send sessionId to your backend for fraud analysis
+            sendSessionIdToBackend(sessionId)
+        },
+        { sessionId, error ->
+            // Failure - collection failed
+            Log.e("Kount", "Collection failed: $error")
+            
+            // Handle the error (retry, log, etc.)
+            handleCollectionError(error)
+        }
+    )
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    KountSDK.INSTANCE.collectForSession(
+        this,
+        (sessionId) -> {
+            // Success - collection completed
+            Log.d("Kount", "Collection completed with session ID: " + sessionId);
+            
+            // Send sessionId to your backend for fraud analysis
+            sendSessionIdToBackend(sessionId);
+            return null;
+        },
+        (sessionId, error) -> {
+            // Failure - collection failed
+            Log.e("Kount", "Collection failed: " + error);
+            
+            // Handle the error (retry, log, etc.)
+            handleCollectionError(error);
+            return null;
+        }
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## Step 5: Retrieve Session ID
+
+You can retrieve the session ID at any time after collection:
+
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin
+    val sessionId = KountSDK.getSessionId()
+    val status = KountSDK.getCollectionStatus()
+    
+    Log.d("Kount", "Session ID: $sessionId")
+    Log.d("Kount", "Status: $status")
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    String sessionId = KountSDK.INSTANCE.getSessionId();
+    String status = KountSDK.INSTANCE.getCollectionStatus();
+    
+    Log.d("Kount", "Session ID: " + sessionId);
+    Log.d("Kount", "Status: " + status);
+    ```
+  </Tab>
+</Tabs>
+
+## Complete Example
+
+Here's a complete working example:
+
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin MainActivity.kt
+    package com.example.app
+
+    import android.Manifest
+    import android.content.pm.PackageManager
+    import android.os.Build
+    import android.os.Bundle
+    import android.util.Log
+    import androidx.appcompat.app.AppCompatActivity
+    import androidx.core.app.ActivityCompat
+    import androidx.core.content.ContextCompat
+    import com.kount.api.KountSDK
+
+    class MainActivity : AppCompatActivity() {
+        
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+            setContentView(R.layout.activity_main)
+            
+            // Configure the SDK
+            KountSDK.setMerchantId("999999")
+            KountSDK.setEnvironment(KountSDK.ENVIRONMENT_TEST)
+            KountSDK.setCollectAnalytics(true)
+            
+            // Request permissions and start collection
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                requestLocationPermission()
+            } else {
+                startDataCollection()
+            }
+        }
+        
+        private fun requestLocationPermission() {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                    KountSDK.REQUEST_PERMISSION_LOCATION
+                )
+            } else {
+                startDataCollection()
+            }
+        }
+        
+        override fun onRequestPermissionsResult(
+            requestCode: Int,
+            permissions: Array<out String>,
+            grantResults: IntArray
+        ) {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+            if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+                startDataCollection()
+            }
+        }
+        
+        private fun startDataCollection() {
+            KountSDK.collectForSession(
+                this,
+                { sessionId ->
+                    Log.d("Kount", "Success: $sessionId")
+                    // Send to backend
+                },
+                { sessionId, error ->
+                    Log.e("Kount", "Failed: $error")
+                    // Handle error
+                }
+            )
+        }
+    }
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java MainActivity.java
+    package com.example.app;
+
+    import android.Manifest;
+    import android.content.pm.PackageManager;
+    import android.os.Build;
+    import android.os.Bundle;
+    import android.util.Log;
+    import androidx.appcompat.app.AppCompatActivity;
+    import androidx.core.app.ActivityCompat;
+    import androidx.core.content.ContextCompat;
+    import com.kount.api.KountSDK;
+
+    public class MainActivity extends AppCompatActivity {
+        
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.activity_main);
+            
+            // Configure the SDK
+            KountSDK.INSTANCE.setMerchantId("999999");
+            KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_TEST);
+            KountSDK.INSTANCE.setCollectAnalytics(true);
+            
+            // Request permissions and start collection
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                requestLocationPermission();
+            } else {
+                startDataCollection();
+            }
+        }
+        
+        private void requestLocationPermission() {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    KountSDK.REQUEST_PERMISSION_LOCATION
+                );
+            } else {
+                startDataCollection();
+            }
+        }
+        
+        @Override
+        public void onRequestPermissionsResult(
+            int requestCode,
+            String[] permissions,
+            int[] grantResults
+        ) {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+            if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+                startDataCollection();
+            }
+        }
+        
+        private void startDataCollection() {
+            KountSDK.INSTANCE.collectForSession(
+                this,
+                (sessionId) -> {
+                    Log.d("Kount", "Success: " + sessionId);
+                    // Send to backend
+                    return null;
+                },
+                (sessionId, error) -> {
+                    Log.e("Kount", "Failed: " + error);
+                    // Handle error
+                    return null;
+                }
+            );
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Testing Your Integration
+
+Build and run your app:
+
+```bash
+./gradlew installDebug
+```
+
+Check your logcat for Kount SDK messages:
+
+```bash
+adb logcat | grep Kount
+```
+
+You should see:
+- "Collection completed with session ID: [session-id]"
+- Status messages showing collection progress
+
+## Collection Status Values
+
+The SDK provides three status values:
+
+| Status | Description |
+|--------|-------------|
+| `COMPLETED` | Data collection finished successfully |
+| `IN_PROGRESS` | Collection is currently running |
+| `FAILED` | Collection encountered an error |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Integration Guides" icon="book" href="/guides/java-integration">
+    Detailed integration guides for Java and Kotlin
+  </Card>
+  <Card title="Configuration" icon="gear" href="/guides/configuration">
+    Learn about all configuration options
+  </Card>
+  <Card title="Core Concepts" icon="lightbulb" href="/concepts/data-collection">
+    Understand how data collection works
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/kount-sdk">
+    Complete API documentation
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Collection returns null session ID">
+    Ensure you've configured the merchant ID before calling `collectForSession()`. The SDK must be initialized with a valid merchant ID.
+    
+    ```kotlin
+    KountSDK.setMerchantId("your-merchant-id")
+    ```
+  </Accordion>
+  
+  <Accordion title="Build fails with 'Cannot resolve symbol KountSDK'">
+    Verify that you've added the JitPack repository and synced your Gradle files:
+    
+    ```gradle
+    repositories {
+        maven { url 'https://jitpack.io' }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Collection status stays IN_PROGRESS">
+    This can happen if there's a network issue or timeout. Check your device's internet connection and ensure your app has the `INTERNET` permission in AndroidManifest.xml.
+  </Accordion>
+</AccordionGroup>
+
+For more troubleshooting help, see the [Troubleshooting Guide](/resources/troubleshooting).

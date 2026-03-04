@@ -1,0 +1,619 @@
+---
+title: "Error Handling"
+description: "Handle collection failures, check status, and implement retry strategies"
+---
+
+## Overview
+
+Proper error handling ensures your app gracefully handles data collection failures while maintaining a smooth user experience. The Kount SDK provides multiple ways to detect and handle errors during the collection process.
+
+## Collection Status
+
+The SDK provides a `getCollectionStatus()` method that returns the current state of data collection.
+
+### Available Status Values
+
+<CodeGroup>
+```kotlin Kotlin
+import com.kount.api.internal.analytics.entities.CollectionStatus
+
+val status = KountSDK.getCollectionStatus()
+
+when (status) {
+    CollectionStatus.COMPLETED.toString() -> {
+        // Collection finished successfully
+    }
+    CollectionStatus.FAILED.toString() -> {
+        // Collection encountered an error
+    }
+    CollectionStatus.IN_PROGRESS.toString() -> {
+        // Collection is still running
+    }
+    CollectionStatus.NOT_STARTED.toString() -> {
+        // Collection hasn't been initiated yet
+    }
+}
+```
+
+```java Java
+import com.kount.api.internal.analytics.entities.CollectionStatus;
+
+String status = KountSDK.INSTANCE.getCollectionStatus();
+
+if (status.equals(CollectionStatus.COMPLETED.toString())) {
+    // Collection finished successfully
+} else if (status.equals(CollectionStatus.FAILED.toString())) {
+    // Collection encountered an error
+} else if (status.equals(CollectionStatus.IN_PROGRESS.toString())) {
+    // Collection is still running
+} else if (status.equals(CollectionStatus.NOT_STARTED.toString())) {
+    // Collection hasn't been initiated yet
+}
+```
+</CodeGroup>
+
+## Handling Failures in Completion Handlers
+
+The most direct way to handle errors is through the failure completion handler:
+
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            // Success path
+            Log.d("TAG", "Collection succeeded with session ID: $sessionId")
+            proceedWithTransaction(sessionId)
+        },
+        { sessionId, error ->
+            // Failure path - handle the error
+            Log.e("TAG", "Collection failed: $error")
+            Log.e("TAG", "Session ID: $sessionId")
+            Log.e("TAG", "Status: ${KountSDK.getCollectionStatus()}")
+            
+            // Decide how to proceed
+            handleCollectionFailure(sessionId, error)
+        }
+    )
+    ```
+  </Tab>
+
+  <Tab title="Java">
+    ```java
+    KountSDK.INSTANCE.collectForSession(
+        this,
+        (sessionId) -> {
+            // Success path
+            Log.d("TAG", "Collection succeeded with session ID: " + sessionId);
+            proceedWithTransaction(sessionId);
+            return null;
+        },
+        (sessionId, error) -> {
+            // Failure path - handle the error
+            Log.e("TAG", "Collection failed: " + error);
+            Log.e("TAG", "Session ID: " + sessionId);
+            Log.e("TAG", "Status: " + KountSDK.INSTANCE.getCollectionStatus());
+            
+            // Decide how to proceed
+            handleCollectionFailure(sessionId, error);
+            return null;
+        }
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## Checking Status on Subsequent Screens
+
+When users navigate to a checkout or payment screen, verify the collection status:
+
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin CollectionActivity.kt
+    class CollectionActivity : AppCompatActivity() {
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+            setContentView(R.layout.activity_collection)
+            setTitle("Checkout Page")
+
+            val textArea = findViewById<TextView>(R.id.textarea)
+            val deviceSessionID = KountSDK.getSessionId()
+            textArea.append("Session ID:\n$deviceSessionID\n\n")
+
+            // Check the collection status
+            val status = KountSDK.getCollectionStatus()
+            textArea.append("Collection Status: $status\n\n")
+            
+            // Handle failed status
+            if (status == CollectionStatus.FAILED.toString()) {
+                textArea.append("Error: Collection failed\n")
+                textArea.setTextColor(Color.RED)
+                
+                // Show retry option or warning to user
+                showRetryOption()
+            }
+        }
+        
+        private fun showRetryOption() {
+            AlertDialog.Builder(this)
+                .setTitle("Collection Failed")
+                .setMessage("Would you like to retry data collection?")
+                .setPositiveButton("Retry") { _, _ -> retryCollection() }
+                .setNegativeButton("Continue Anyway") { _, _ -> /* proceed */ }
+                .show()
+        }
+        
+        private fun retryCollection() {
+            KountSDK.collectForSession(
+                this,
+                { sessionId -> 
+                    Toast.makeText(this, "Collection successful", Toast.LENGTH_SHORT).show()
+                    recreate() // Refresh the activity
+                },
+                { sessionId, error ->
+                    Toast.makeText(this, "Collection failed again", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Java">
+    ```java CollectionActivity.java
+    public class CollectionActivity extends AppCompatActivity {
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.activity_collection);
+            setTitle("Checkout Page");
+
+            final TextView textArea = findViewById(R.id.textarea);
+            final String deviceSessionID = KountSDK.INSTANCE.getSessionId();
+            textArea.append("Session ID:\n" + deviceSessionID + "\n\n");
+
+            // Check the collection status
+            String status = KountSDK.INSTANCE.getCollectionStatus();
+            textArea.append("Collection Status: " + status + "\n\n");
+            
+            // Handle failed status
+            if (status.equals(CollectionStatus.FAILED.toString())) {
+                textArea.append("Error: Collection failed\n");
+                textArea.setTextColor(Color.RED);
+                
+                // Show retry option or warning to user
+                showRetryOption();
+            }
+        }
+        
+        private void showRetryOption() {
+            new AlertDialog.Builder(this)
+                .setTitle("Collection Failed")
+                .setMessage("Would you like to retry data collection?")
+                .setPositiveButton("Retry", (dialog, which) -> retryCollection())
+                .setNegativeButton("Continue Anyway", null)
+                .show();
+        }
+        
+        private void retryCollection() {
+            KountSDK.INSTANCE.collectForSession(
+                this,
+                (sessionId) -> {
+                    Toast.makeText(this, "Collection successful", Toast.LENGTH_SHORT).show();
+                    recreate(); // Refresh the activity
+                    return null;
+                },
+                (sessionId, error) -> {
+                    Toast.makeText(this, "Collection failed again", Toast.LENGTH_SHORT).show();
+                    return null;
+                }
+            );
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Common Error Scenarios
+
+<AccordionGroup>
+  <Accordion title="Network Connectivity Issues">
+    **Problem:** The device has no internet connection or poor connectivity.
+
+    **Detection:**
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId -> /* success */ },
+        { sessionId, error ->
+            if (error.contains("network", ignoreCase = true) || 
+                error.contains("connection", ignoreCase = true)) {
+                // Network-related error
+                showNetworkError()
+            }
+        }
+    )
+    ```
+
+    **Handling:**
+    - Check device connectivity before collecting
+    - Implement exponential backoff for retries
+    - Allow users to proceed with a warning
+  </Accordion>
+
+  <Accordion title="Permission Denied">
+    **Problem:** User denied location or other required permissions.
+
+    **Detection:**
+    ```kotlin
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        
+        if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+            if (grantResults.isEmpty() || 
+                grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                // Permission denied
+                Log.w("TAG", "Location permission denied")
+            }
+            
+            // Still proceed with collection (degraded data)
+            KountSDK.collectForSession(this, { /* ... */ }, { _, _ -> /* ... */ })
+        }
+    }
+    ```
+
+    **Handling:**
+    - Collection still works without permissions (with reduced data)
+    - Explain to users why permissions improve security
+    - Don't block user flow if permissions are denied
+  </Accordion>
+
+  <Accordion title="SDK Configuration Issues">
+    **Problem:** SDK not properly configured (missing merchant ID, wrong environment).
+
+    **Detection:**
+    ```kotlin
+    // Verify configuration before collecting
+    private fun verifySDKConfiguration(): Boolean {
+        val merchantId = KountSDK.getMerchantId()
+        if (merchantId.isNullOrEmpty() || merchantId == "999999") {
+            Log.e("TAG", "Invalid merchant ID: $merchantId")
+            return false
+        }
+        return true
+    }
+
+    // Use it before collection
+    if (verifySDKConfiguration()) {
+        KountSDK.collectForSession(this, { /* ... */ }, { _, _ -> /* ... */ })
+    } else {
+        Log.e("TAG", "SDK not properly configured")
+    }
+    ```
+
+    **Handling:**
+    - Validate configuration at app startup
+    - Use different merchant IDs for test/production
+    - Log configuration errors prominently
+  </Accordion>
+
+  <Accordion title="Timeout or Collection Taking Too Long">
+    **Problem:** Collection is taking longer than expected.
+
+    **Detection:**
+    ```kotlin
+    private var collectionStartTime: Long = 0
+    private val COLLECTION_TIMEOUT = 30_000L // 30 seconds
+
+    private fun startCollectionWithTimeout() {
+        collectionStartTime = System.currentTimeMillis()
+        
+        val handler = Handler(Looper.getMainLooper())
+        val timeoutRunnable = Runnable {
+            if (KountSDK.getCollectionStatus() == CollectionStatus.IN_PROGRESS.toString()) {
+                Log.w("TAG", "Collection timeout exceeded")
+                handleTimeout()
+            }
+        }
+        
+        handler.postDelayed(timeoutRunnable, COLLECTION_TIMEOUT)
+        
+        KountSDK.collectForSession(
+            this,
+            { sessionId ->
+                handler.removeCallbacks(timeoutRunnable)
+                val duration = System.currentTimeMillis() - collectionStartTime
+                Log.d("TAG", "Collection completed in ${duration}ms")
+            },
+            { sessionId, error ->
+                handler.removeCallbacks(timeoutRunnable)
+                Log.e("TAG", "Collection failed: $error")
+            }
+        )
+    }
+    ```
+
+    **Handling:**
+    - Set reasonable timeout values
+    - Log collection duration for monitoring
+    - Proceed with transaction if timeout occurs
+  </Accordion>
+</AccordionGroup>
+
+## Retry Strategies
+
+### Simple Retry
+
+```kotlin
+private var retryCount = 0
+private val MAX_RETRIES = 3
+
+private fun collectWithRetry() {
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            Log.d("TAG", "Collection succeeded on attempt ${retryCount + 1}")
+            retryCount = 0 // Reset for next time
+            proceedWithTransaction(sessionId)
+        },
+        { sessionId, error ->
+            Log.e("TAG", "Collection failed on attempt ${retryCount + 1}: $error")
+            
+            if (retryCount < MAX_RETRIES) {
+                retryCount++
+                Handler(Looper.getMainLooper()).postDelayed({
+                    Log.d("TAG", "Retrying collection (attempt ${retryCount + 1})")
+                    collectWithRetry()
+                }, 2000L) // Wait 2 seconds before retry
+            } else {
+                Log.e("TAG", "Max retries exceeded, proceeding anyway")
+                retryCount = 0
+                proceedWithTransaction(sessionId)
+            }
+        }
+    )
+}
+```
+
+### Exponential Backoff
+
+```kotlin
+private var retryCount = 0
+private val MAX_RETRIES = 3
+
+private fun collectWithExponentialBackoff() {
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            retryCount = 0
+            proceedWithTransaction(sessionId)
+        },
+        { sessionId, error ->
+            if (retryCount < MAX_RETRIES) {
+                retryCount++
+                // Exponential backoff: 2s, 4s, 8s
+                val delayMs = (2000L * (1 shl (retryCount - 1)))
+                
+                Log.d("TAG", "Retrying in ${delayMs}ms")
+                Handler(Looper.getMainLooper()).postDelayed({
+                    collectWithExponentialBackoff()
+                }, delayMs)
+            } else {
+                retryCount = 0
+                // Proceed or show error to user
+                showFinalErrorDialog(sessionId)
+            }
+        }
+    )
+}
+```
+
+### User-Initiated Retry
+
+```kotlin
+private fun showRetryDialog(sessionId: String, error: String) {
+    AlertDialog.Builder(this)
+        .setTitle("Collection Failed")
+        .setMessage("Data collection failed: $error\n\nWould you like to try again?")
+        .setPositiveButton("Retry") { _, _ ->
+            collectWithRetry()
+        }
+        .setNegativeButton("Continue Without") { _, _ ->
+            // Proceed with existing session ID
+            proceedWithTransaction(sessionId)
+        }
+        .setCancelable(false)
+        .show()
+}
+```
+
+## Logging and Monitoring
+
+<Tabs>
+  <Tab title="Detailed Logging">
+    ```kotlin
+    private fun collectWithDetailedLogging() {
+        val startTime = System.currentTimeMillis()
+        Log.d("TAG", "Starting collection at $startTime")
+        Log.d("TAG", "Initial status: ${KountSDK.getCollectionStatus()}")
+        
+        KountSDK.collectForSession(
+            this,
+            { sessionId ->
+                val duration = System.currentTimeMillis() - startTime
+                Log.d("TAG", "Collection SUCCESS")
+                Log.d("TAG", "  Session ID: $sessionId")
+                Log.d("TAG", "  Duration: ${duration}ms")
+                Log.d("TAG", "  Final status: ${KountSDK.getCollectionStatus()}")
+                
+                // Send metrics to your analytics
+                logAnalytics("kount_collection_success", mapOf(
+                    "duration_ms" to duration,
+                    "session_id" to sessionId
+                ))
+            },
+            { sessionId, error ->
+                val duration = System.currentTimeMillis() - startTime
+                Log.e("TAG", "Collection FAILED")
+                Log.e("TAG", "  Session ID: $sessionId")
+                Log.e("TAG", "  Error: $error")
+                Log.e("TAG", "  Duration: ${duration}ms")
+                Log.e("TAG", "  Final status: ${KountSDK.getCollectionStatus()}")
+                
+                // Send error metrics to your analytics
+                logAnalytics("kount_collection_failure", mapOf(
+                    "duration_ms" to duration,
+                    "error" to error,
+                    "session_id" to sessionId
+                ))
+            }
+        )
+    }
+    ```
+  </Tab>
+
+  <Tab title="Production Monitoring">
+    ```kotlin
+    private fun collectWithMonitoring() {
+        try {
+            KountSDK.collectForSession(
+                this,
+                { sessionId ->
+                    // Track success rate
+                    analytics.incrementCounter("kount_collection_success")
+                    
+                    // Send to backend for monitoring
+                    reportToBackend(CollectionResult(
+                        success = true,
+                        sessionId = sessionId,
+                        timestamp = System.currentTimeMillis()
+                    ))
+                },
+                { sessionId, error ->
+                    // Track failure rate
+                    analytics.incrementCounter("kount_collection_failure")
+                    
+                    // Alert if error rate is high
+                    reportToBackend(CollectionResult(
+                        success = false,
+                        sessionId = sessionId,
+                        error = error,
+                        timestamp = System.currentTimeMillis()
+                    ))
+                    
+                    // Send to error tracking (e.g., Sentry, Crashlytics)
+                    errorTracker.logError(
+                        "KountCollectionFailed",
+                        mapOf("error" to error, "sessionId" to sessionId)
+                    )
+                }
+            )
+        } catch (e: Exception) {
+            Log.e("TAG", "Exception during collection setup", e)
+            errorTracker.logException(e)
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Don't Block Users" icon="unlock">
+    Even if collection fails, allow users to proceed with their transaction. The session ID is still generated and can be sent to Kount.
+  </Card>
+  
+  <Card title="Log Everything" icon="file-lines">
+    Log collection attempts, successes, failures, and durations. This data is invaluable for debugging production issues.
+  </Card>
+  
+  <Card title="Implement Retries Wisely" icon="rotate">
+    Use exponential backoff and limit retry attempts. Don't retry indefinitely or block the user experience.
+  </Card>
+  
+  <Card title="Monitor in Production" icon="chart-line">
+    Track collection success rates and failure patterns. Set up alerts for unusual error rates.
+  </Card>
+  
+  <Card title="Handle Permissions Gracefully" icon="shield">
+    Don't force users to grant permissions. Collection works with reduced data if permissions are denied.
+  </Card>
+  
+  <Card title="Test Error Scenarios" icon="flask">
+    Test your error handling with airplane mode, revoked permissions, and invalid configurations.
+  </Card>
+</CardGroup>
+
+## Testing Error Conditions
+
+```kotlin
+class ErrorTestingActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        // Test 1: No internet connection
+        // (Enable airplane mode before running)
+        testNoInternet()
+        
+        // Test 2: Invalid merchant ID
+        testInvalidConfig()
+        
+        // Test 3: Collection status progression
+        testStatusProgression()
+    }
+    
+    private fun testNoInternet() {
+        Log.d("TEST", "Testing collection without internet...")
+        KountSDK.collectForSession(
+            this,
+            { sessionId -> Log.d("TEST", "Unexpected success: $sessionId") },
+            { sessionId, error -> Log.d("TEST", "Expected failure: $error") }
+        )
+    }
+    
+    private fun testInvalidConfig() {
+        Log.d("TEST", "Testing with invalid merchant ID...")
+        KountSDK.setMerchantId("invalid")
+        KountSDK.collectForSession(
+            this,
+            { sessionId -> Log.d("TEST", "Result: $sessionId") },
+            { sessionId, error -> Log.d("TEST", "Error: $error") }
+        )
+    }
+    
+    private fun testStatusProgression() {
+        Log.d("TEST", "Initial status: ${KountSDK.getCollectionStatus()}")
+        
+        KountSDK.collectForSession(
+            this,
+            { sessionId ->
+                Log.d("TEST", "Final status: ${KountSDK.getCollectionStatus()}")
+            },
+            { sessionId, error ->
+                Log.d("TEST", "Error status: ${KountSDK.getCollectionStatus()}")
+            }
+        )
+        
+        // Check status immediately after call
+        Handler(Looper.getMainLooper()).postDelayed({
+            Log.d("TEST", "Status after 100ms: ${KountSDK.getCollectionStatus()}")
+        }, 100)
+    }
+}
+```
+
+<Warning>
+Always test your error handling in a variety of conditions: airplane mode, poor network, denied permissions, and different Android versions.
+</Warning>
+
+## Next Steps
+
+<Card title="Basic Setup" icon="rocket" href="/examples/basic-setup">
+  Review the complete basic setup implementation
+</Card>

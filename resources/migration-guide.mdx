@@ -1,0 +1,239 @@
+---
+title: "Migration Guide"
+description: "Guide for upgrading between major versions of the Kount Android SDK"
+icon: "arrow-up-right-dots"
+---
+
+This guide helps you migrate between major versions of the Kount Android SDK, highlighting breaking changes and what you need to update in your integration.
+
+## Upgrading to 4.x from 3.x
+
+### Overview
+
+Version 4.0 represents a major update to the Kount Android SDK with significant enhancements and breaking changes.
+
+<Warning>
+  Version 4.0 introduces breaking changes to the API. Review all changes carefully before upgrading.
+</Warning>
+
+### What Changed
+
+<AccordionGroup>
+  <Accordion title="Minimum Android API Version">
+    - **3.x**: Minimum API 19 (Android 4.4)
+    - **4.0+**: Minimum API 19 (Android 4.4), but **API 29 (Android 10) is recommended** for full feature support
+    - **4.1.0+**: Minimum API 20 (JellyBean)
+    - **4.3.1+**: Minimum API 21 (Lollipop)
+    - **4.3.2+**: Minimum API 26 (Oreo)
+
+    <Note>
+      If your application is not running on a device with Android 10+, you may not get all the features. Features are automatically enabled by the OS version of the device.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Enhanced Data Collection">
+    Version 4.0 introduced several new data collection capabilities:
+    
+    - **City-level location information**: More granular location data
+    - **Play Store library integration**: Utilizes Google Play Store libraries when available
+    - **Enhanced timing metrics**: Better performance monitoring
+    - **Android 10 updates**: Full support for Android 10 features
+    - **UI element collection**: New analytics capabilities (4.1.0+)
+  </Accordion>
+
+  <Accordion title="API Changes">
+    ### Configuration Updates
+    
+    The SDK configuration remains similar, but with new options:
+
+    **Before (3.x)**:
+    ```java
+    // Basic configuration
+    KountSDK.INSTANCE.setMerchantId(merchantId);
+    KountSDK.INSTANCE.setEnvironment(environment);
+    ```
+
+    **After (4.x)**:
+    ```java
+    // Additional analytics option
+    KountSDK.INSTANCE.setMerchantId(merchantId);
+    KountSDK.INSTANCE.setEnvironment(environment);
+    KountSDK.INSTANCE.setCollectAnalytics(true); // New in 4.1+
+    ```
+
+    ### Completion Handlers (4.3.0+)
+    
+    Version 4.3.0 introduced completion handlers for better control flow:
+
+    ```java
+    KountSDK.INSTANCE.collectForSession(context, 
+      sessionId -> {
+        // Success callback
+        Log.d("TAG", "Collection completed: " + sessionId);
+        return null;
+      },
+      (sessionId, error) -> {
+        // Failure callback
+        Log.e("TAG", "Collection failed: " + error);
+        return null;
+      }
+    );
+    ```
+  </Accordion>
+
+  <Accordion title="Merchant ID Type Change">
+    ### Version 4.3.1+
+    
+    <Warning>
+      Merchant ID changed from Integer to String in version 4.3.1.
+    </Warning>
+
+    **Before (4.3.0 and earlier)**:
+    ```java
+    int merchantId = 999999;
+    KountSDK.INSTANCE.setMerchantId(merchantId);
+    ```
+
+    **After (4.3.1+)**:
+    ```java
+    String merchantId = "999999";
+    KountSDK.INSTANCE.setMerchantId(merchantId);
+    ```
+  </Accordion>
+
+  <Accordion title="Session ID Auto-generation">
+    ### Version 4.3.1+
+    
+    The SDK now automatically generates a session ID when the field is null or empty:
+
+    ```java
+    // If you pass null or empty string, SDK auto-generates session ID
+    KountSDK.INSTANCE.collectForSession(context, successHandler, failureHandler);
+    ```
+
+    The regex validation for `client_id` and `session_id` was also updated in 4.3.1.
+  </Accordion>
+</AccordionGroup>
+
+### Migration Steps
+
+<Steps>
+  <Step title="Update Minimum SDK Version">
+    Update your app's `build.gradle` to meet the new minimum requirements:
+
+    ```gradle
+    android {
+      defaultConfig {
+        minSdkVersion 26  // For 4.3.2+
+        targetSdkVersion 29  // Recommended for full features
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Update SDK Dependency">
+    Update your Kount SDK dependency to the latest 4.x version:
+
+    ```gradle
+    dependencies {
+      implementation 'com.kount.mobile:kount-mobile-sdk:4.3.2'
+    }
+    ```
+  </Step>
+
+  <Step title="Update Merchant ID Type">
+    If upgrading to 4.3.1 or later, change your merchant ID from Integer to String:
+
+    ```java
+    // Change this
+    int merchantId = 999999;
+    
+    // To this
+    String merchantId = "999999";
+    ```
+  </Step>
+
+  <Step title="Add Completion Handlers">
+    Update your collection calls to use the new completion handler pattern (4.3.0+):
+
+    ```java
+    KountSDK.INSTANCE.collectForSession(
+      this,
+      sessionId -> {
+        // Handle success - update UI, proceed with checkout, etc.
+        Log.d("Kount", "Session ID: " + sessionId);
+        return null;
+      },
+      (sessionId, error) -> {
+        // Handle failure - log error, retry, etc.
+        Log.e("Kount", "Error: " + error);
+        return null;
+      }
+    );
+    ```
+  </Step>
+
+  <Step title="Enable Analytics (Optional)">
+    If you want to collect UI analytics (4.1.0+):
+
+    ```java
+    KountSDK.INSTANCE.setCollectAnalytics(true);
+    ```
+
+    <Note>
+      Analytics collection defaults to true. Set to false if you don't want this feature.
+    </Note>
+  </Step>
+
+  <Step title="Update Play Store Dependencies">
+    Kount recommends including Google Play Store libraries if your app doesn't already:
+
+    ```gradle
+    dependencies {
+      implementation 'com.google.android.gms:play-services-ads-identifier:18.0.1'
+      implementation 'com.google.android.gms:play-services-location:21.0.1'
+    }
+    ```
+  </Step>
+
+  <Step title="Test Thoroughly">
+    Test your integration on multiple Android versions:
+    
+    - Minimum supported version (API 26 for 4.3.2+)
+    - Android 10+ for full feature support
+    - Verify location permissions still work
+    - Check collection completion handlers
+  </Step>
+</Steps>
+
+### Bug Fixes to Be Aware Of
+
+Several bugs were fixed in the 4.x series that may affect behavior:
+
+- **4.2.2**: Fixed race condition where collection handlers completed before data transmission
+- **4.2.4**: Fixed memory leak when Analytics flag is off with many Activities
+- **4.1.3**: Fixed delayed data transmission in SPAs or single-view apps
+- **4.1.2**: Fixed NullPointer issue with charging cable events
+
+<Note>
+  If you're using 4.2.0 or 4.2.1, upgrade to 4.2.2+ to resolve the race condition.
+</Note>
+
+## Breaking Changes Summary
+
+| Version | Breaking Change | Action Required |
+|---------|----------------|------------------|
+| 4.3.2 | Minimum API 26 (Oreo) | Update minSdkVersion to 26 |
+| 4.3.1 | Merchant ID is String | Change merchant ID type from int to String |
+| 4.3.0 | Completion handlers added | Update collectForSession calls to use new handlers |
+| 4.1.0 | Minimum API 20 (JellyBean) | Update minSdkVersion to 20 |
+| 4.0.0 | Major API changes | Review all changes and test thoroughly |
+
+## Need Help?
+
+If you encounter issues during migration:
+
+- Check the [Troubleshooting](/resources/troubleshooting) guide
+- Review the [Changelog](/resources/changelog) for detailed version history
+- Visit [Kount Community](https://support.kount.com/hc/en-us/community/topics) for support
+- Email support@kount.com for direct assistance

@@ -1,0 +1,321 @@
+---
+title: "Basic Setup"
+description: "Complete working example from initialization through first data collection"
+---
+
+This guide shows you how to set up the Kount Android SDK and perform your first data collection using complete, working code examples.
+
+## Overview
+
+The basic setup involves three main steps:
+1. Configure the SDK with your merchant ID and environment
+2. Request necessary permissions (location)
+3. Trigger data collection with `collectForSession()`
+
+## Complete Implementation
+
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin MainActivity.kt
+    package com.kount.checkoutexample.kotlin
+
+    import android.Manifest
+    import android.app.Activity
+    import android.content.pm.PackageManager
+    import android.os.Build
+    import android.os.Bundle
+    import android.util.Log
+    import android.widget.Button
+    import android.widget.TextView
+    import androidx.appcompat.app.AppCompatActivity
+    import androidx.core.app.ActivityCompat
+    import androidx.core.content.ContextCompat
+    import com.kount.api.KountSDK
+
+    class MainActivity : AppCompatActivity() {
+        companion object {
+            const val MERCHANT_ID = "999999" // Insert your valid merchant ID
+        }
+
+        private val ENVIRONMENT: Int = KountSDK.ENVIRONMENT_TEST
+        private lateinit var location: TextView
+
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+            setContentView(R.layout.activity_main)
+
+            location = findViewById(R.id.location)
+
+            // Step 1: Configure the SDK
+            KountSDK.setMerchantId(MERCHANT_ID)
+            KountSDK.setCollectAnalytics(true)
+            KountSDK.setEnvironment(ENVIRONMENT)
+
+            // Step 2: Check permissions and collect data
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                requestLocationPermission(this)
+            } else {
+                location.text = "Allowed"
+                startDataCollection()
+            }
+        }
+
+        private fun startDataCollection() {
+            // Step 3: Trigger data collection
+            KountSDK.collectForSession(
+                this,
+                { sessionId ->
+                    Log.d("TAG", "Success! Session ID: $sessionId")
+                    Log.d("TAG", "Collection status: ${KountSDK.getCollectionStatus()}")
+                },
+                { sessionId, error ->
+                    Log.d("TAG", "Failed with error: $error, Session ID: $sessionId")
+                    Log.d("TAG", "Collection status: ${KountSDK.getCollectionStatus()}")
+                }
+            )
+        }
+
+        private fun requestLocationPermission(activity: Activity) {
+            if (ContextCompat.checkSelfPermission(
+                    activity,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    activity,
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                    KountSDK.REQUEST_PERMISSION_LOCATION
+                )
+            } else {
+                location.text = "Allowed"
+                startDataCollection()
+            }
+        }
+
+        override fun onRequestPermissionsResult(
+            requestCode: Int,
+            permissions: Array<out String>,
+            grantResults: IntArray
+        ) {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+            
+            if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+                startDataCollection()
+                
+                if (grantResults.isNotEmpty() && 
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    location.text = "Allowed"
+                } else {
+                    location.text = "Denied"
+                }
+            }
+        }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Java">
+    ```java MainActivity.java
+    package com.kount.checkoutexample;
+
+    import android.Manifest;
+    import android.app.Activity;
+    import android.content.pm.PackageManager;
+    import android.os.Build;
+    import android.os.Bundle;
+    import android.util.Log;
+    import android.widget.TextView;
+    import androidx.appcompat.app.AppCompatActivity;
+    import androidx.core.app.ActivityCompat;
+    import androidx.core.content.ContextCompat;
+    import com.kount.api.KountSDK;
+
+    public class MainActivity extends AppCompatActivity {
+        static final String MERCHANT_ID = "999999"; // Insert your valid merchant ID
+        static final int ENVIRONMENT = KountSDK.ENVIRONMENT_TEST;
+        TextView location;
+
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.activity_main);
+
+            location = findViewById(R.id.location);
+
+            // Step 1: Configure the SDK
+            KountSDK.INSTANCE.setMerchantId(MERCHANT_ID);
+            KountSDK.INSTANCE.setCollectAnalytics(true);
+            KountSDK.INSTANCE.setEnvironment(ENVIRONMENT);
+
+            // Step 2: Check permissions and collect data
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                requestLocationPermission(this);
+            } else {
+                location.setText("Allowed");
+                startDataCollection();
+            }
+        }
+
+        private void startDataCollection() {
+            // Step 3: Trigger data collection
+            KountSDK.INSTANCE.collectForSession(
+                this,
+                (sessionId) -> {
+                    Log.d("TAG", "Success! Session ID: " + sessionId);
+                    Log.d("TAG", "Collection status: " + 
+                          KountSDK.INSTANCE.getCollectionStatus());
+                    return null;
+                },
+                (sessionId, error) -> {
+                    Log.d("TAG", "Failed with error: " + error + 
+                          ", Session ID: " + sessionId);
+                    Log.d("TAG", "Collection status: " + 
+                          KountSDK.INSTANCE.getCollectionStatus());
+                    return null;
+                }
+            );
+        }
+
+        private void requestLocationPermission(Activity activity) {
+            if (ContextCompat.checkSelfPermission(
+                    activity,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(
+                    activity,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    KountSDK.REQUEST_PERMISSION_LOCATION
+                );
+            } else {
+                location.setText("Allowed");
+                startDataCollection();
+            }
+        }
+
+        @Override
+        public void onRequestPermissionsResult(
+                int requestCode, 
+                String permissions[], 
+                int[] grantResults) {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+            if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+                startDataCollection();
+
+                if (grantResults.length > 0 && 
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    location.setText("Allowed");
+                } else {
+                    location.setText("Denied");
+                }
+            }
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Implementation Steps
+
+<Steps>
+  <Step title="Configure the SDK">
+    Set your merchant ID, analytics preference, and environment (TEST or PRODUCTION).
+
+    <CodeGroup>
+    ```kotlin Kotlin
+    KountSDK.setMerchantId("999999")
+    KountSDK.setCollectAnalytics(true)
+    KountSDK.setEnvironment(KountSDK.ENVIRONMENT_TEST)
+    ```
+
+    ```java Java
+    KountSDK.INSTANCE.setMerchantId("999999");
+    KountSDK.INSTANCE.setCollectAnalytics(true);
+    KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_TEST);
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Request Location Permission">
+    For Android 6.0 (API 23) and above, request location permission to enable enhanced data collection.
+
+    ```kotlin
+    ActivityCompat.requestPermissions(
+        activity,
+        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+        KountSDK.REQUEST_PERMISSION_LOCATION
+    )
+    ```
+
+    <Note>
+    Location permission is optional but recommended for better fraud detection accuracy.
+    </Note>
+  </Step>
+
+  <Step title="Start Data Collection">
+    Call `collectForSession()` with success and failure callbacks:
+
+    <CodeGroup>
+    ```kotlin Kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            // Success - collection completed
+            Log.d("TAG", "Session ID: $sessionId")
+        },
+        { sessionId, error ->
+            // Failure - handle error
+            Log.d("TAG", "Error: $error")
+        }
+    )
+    ```
+
+    ```java Java
+    KountSDK.INSTANCE.collectForSession(
+        this,
+        (sessionId) -> {
+            // Success - collection completed
+            Log.d("TAG", "Session ID: " + sessionId);
+            return null;
+        },
+        (sessionId, error) -> {
+            // Failure - handle error
+            Log.d("TAG", "Error: " + error);
+            return null;
+        }
+    );
+    ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Retrieving the Session ID
+
+After successful collection, you can retrieve the session ID to include with your transaction:
+
+<CodeGroup>
+```kotlin Kotlin
+val sessionId = KountSDK.getSessionId()
+// Send this sessionId with your transaction to Kount
+```
+
+```java Java
+String sessionId = KountSDK.INSTANCE.getSessionId();
+// Send this sessionId with your transaction to Kount
+```
+</CodeGroup>
+
+<Info>
+The session ID is automatically generated and managed by the SDK. You should send this ID to your backend along with transaction data for Kount's fraud analysis.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Completion Handlers" icon="code" href="/examples/completion-handlers">
+    Learn how to use success and failure callbacks effectively
+  </Card>
+  <Card title="Error Handling" icon="circle-exclamation" href="/examples/error-handling">
+    Implement robust error handling for data collection
+  </Card>
+</CardGroup>

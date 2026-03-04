@@ -1,0 +1,241 @@
+---
+title: "Changelog"
+description: "Release notes and version history for the Kount Android SDK"
+icon: "clock-rotate-left"
+---
+
+Complete version history for the Kount Android SDK, including new features, bug fixes, and breaking changes.
+
+## Version 4.3.2
+
+**Released**: Latest version
+
+### Security
+- Patched vulnerability CWE-926
+
+### Changes
+- **Minimum Android API**: 26 (Oreo)
+
+<Warning>
+  This version increases the minimum Android API from 21 to 26. Ensure your app supports API 26+.
+</Warning>
+
+---
+
+## Version 4.3.1
+
+### Features
+- Enhanced unit tests
+- Autogeneration of session_id when the field is null or empty
+
+### Changes
+- **Breaking**: Merchant ID changed from Integer to String type
+- QA Environment hidden
+- Updated QA environment URL
+- Regex updated for `client_id` and `session_id` validation
+
+### Requirements
+- **Minimum Android API**: 21 (Lollipop)
+
+<Note>
+  If you're upgrading from an earlier version, you'll need to change your merchant ID from `int` to `String`.
+</Note>
+
+---
+
+## Version 4.3.0
+
+### Features
+- **Completion Handler**: Added new completion handler feature to perform actions after DDC Data Collection completes. Actions can be performed in the completion block for better control flow.
+
+**Example**:
+```java
+KountSDK.INSTANCE.collectForSession(
+  context,
+  sessionId -> {
+    // Success handler - perform actions after collection completes
+    Log.d("Kount", "Collection completed: " + sessionId);
+    return null;
+  },
+  (sessionId, error) -> {
+    // Failure handler
+    Log.e("Kount", "Collection failed: " + error);
+    return null;
+  }
+);
+```
+
+---
+
+## Version 4.2.4
+
+### Bug Fixes
+- Fixed memory leak bug that could occur when Analytics flag is turned off and the app has many Activities
+- Fixed Maven issue with release
+
+---
+
+## Version 4.2.3
+
+### Bug Fixes
+- Fix for Gradle implementations to ensure the library installs properly into a project
+
+---
+
+## Version 4.2.2
+
+### Bug Fixes
+- **Critical**: Fixes race condition where collection handlers reported completion prior to transmission of collection data to servers
+
+<Warning>
+  Any users of 4.2.0 or 4.2.1 should upgrade to 4.2.2 to resolve the race condition.
+</Warning>
+
+---
+
+## Version 4.2.1
+
+### Bug Fixes
+- Fixed timing issue where Collections were not started if the user did not switch Activities in an application
+- Additional documentation for multiple platforms and hybrids available at support.kount.com
+
+---
+
+## Version 4.1.3
+
+### Bug Fixes
+- Fixes issue where transmission of data collected was being delayed in some use cases
+- Data now transmits as soon as work is completed
+- Particularly impacted customers using 4.1.2 and older who:
+  - Enabled Analytics features
+  - Run a Single Page Application (SPA)
+  - Don't transition to a second view prior to requesting data from Kount
+
+---
+
+## Version 4.1.2
+
+### Bug Fixes
+- Fixes NullPointer issue when connecting/disconnecting charging cable
+
+---
+
+## Version 4.1.1
+
+### Features
+- Updated SDK to collect additional data points
+
+---
+
+## Version 4.1.0
+
+### Features
+- **New**: UI element collection capabilities for analytics
+
+### Requirements
+- **Minimum Android API**: 20 (JellyBean)
+
+---
+
+## Version 4.0.0
+
+**Major Release**
+
+### Features
+- **City-level location information**: More granular location data collection
+- **Play Store libraries**: Utilizes Google Play Store libraries if available
+- **Enhanced timing metrics**: Improved performance monitoring
+- **Android 10 updates**: Full support for Android 10 features
+- Security and bug fixes
+
+### Requirements
+- **Minimum Android API**: 19 (KitKat)
+- **Recommended Target Android OS**: 29 (Android 10)
+- **Recommended**: Include Google Play Store libraries if client app doesn't already
+
+### Tested Platforms
+- Android 4.4.2 (KitKat)
+- Android 5.1 (Lollipop)
+- Android 6.0 (Marshmallow)
+- Android 7.1 (Nougat)
+- Android 8.1 (Oreo)
+- Android 9 (Pie)
+- Android 10
+
+<Note>
+  If your application is not running on a device with Android 10, you may not get all the features in this release. Features are automatically enabled by the OS version of the device.
+</Note>
+
+---
+
+## Version 3.3
+
+### Features
+- Added support for Instant Apps
+- Improved LocationCollector process
+- Improved reporting of errors and timeouts
+
+<Note>
+  Due to Android restrictions, Instant App Collection may be degraded compared to a full, installed Android App.
+</Note>
+
+---
+
+## Version 3.2
+
+### Improvements
+- Significantly reduced collection time
+
+### Bug Fixes
+- Bugfixes for LocationCollector
+
+---
+
+## Version 3.1
+
+### Changes
+- Updated SDK in preparation for future enhancements
+- No coding interface changes implemented
+- Completely compatible with established 3.0 integrations
+
+---
+
+## Version 3.0
+
+**Major Release**
+
+### Features
+- Updated SDK with more intuitive configuration and collection
+- Improved collection capabilities
+
+---
+
+## Upgrade Guides
+
+For detailed migration instructions between versions:
+
+<CardGroup cols={2}>
+  <Card title="Migration Guide" icon="arrow-up-right-dots" href="/resources/migration-guide">
+    Step-by-step guides for upgrading between major versions
+  </Card>
+
+  <Card title="Troubleshooting" icon="wrench" href="/resources/troubleshooting">
+    Solutions to common issues and version-specific problems
+  </Card>
+</CardGroup>
+
+## Version Support
+
+<Note>
+  We recommend always using the latest version of the SDK to ensure you have the latest security patches, bug fixes, and features.
+</Note>
+
+### Current Version
+- **Latest**: 4.3.2
+- **Minimum Android API**: 26 (Oreo)
+- **Recommended Target**: 29+ (Android 10+) for all features
+
+### Deprecated Versions
+- **4.2.0 - 4.2.1**: Contains race condition, upgrade to 4.2.2+
+- **4.1.2 and older**: Missing critical bug fixes and features
+- **3.x series**: Legacy version, upgrade to 4.x for latest features

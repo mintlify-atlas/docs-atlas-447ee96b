@@ -1,0 +1,382 @@
+---
+title: "Kotlin Integration"
+description: "Integrate the Kount Android SDK using Kotlin with idiomatic patterns"
+---
+
+## Overview
+
+This guide demonstrates how to integrate the Kount Android SDK in a Kotlin-based Android application. You'll learn how to leverage Kotlin's features like lambda expressions, extension functions, and null safety for clean, concise integration.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+- Android Studio with Kotlin support
+- Minimum Android API level 21 (Android 5.0)
+- A valid Kount Merchant ID
+- The Kount Android SDK added as a dependency
+
+## Required Imports
+
+Add the following imports to your Activity:
+
+```kotlin
+import com.kount.api.KountSDK
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+```
+
+## Basic Integration
+
+### Step 1: Initialize the SDK
+
+In your `MainActivity.onCreate()` method, configure the Kount SDK:
+
+```kotlin
+class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsResultCallback {
+    
+    companion object {
+        const val MERCHANT_ID = "999999" // Insert your valid merchant ID
+    }
+    
+    private val ENVIRONMENT: Int = KountSDK.ENVIRONMENT_TEST
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        
+        // Configure the SDK
+        KountSDK.setMerchantId(MERCHANT_ID)
+        KountSDK.setCollectAnalytics(true)
+        KountSDK.setEnvironment(ENVIRONMENT)
+        
+        // Rest of your initialization code
+    }
+}
+```
+
+<Note>
+Notice the Kotlin syntax: `KountSDK.setMerchantId()` instead of `KountSDK.INSTANCE.setMerchantId()`. Kotlin allows cleaner access to singleton objects.
+</Note>
+
+### Step 2: Collect Device Data with Lambda Expressions
+
+Kotlin's lambda syntax makes callback handling more concise:
+
+```kotlin
+KountSDK.collectForSession(this, { sessionId ->
+    // Success callback
+    Log.d("TAG", "Collection completed with sessionId $sessionId")
+    Log.d("TAG", "DDC status is ${KountSDK.getCollectionStatus()}")
+}, { sessionId, error ->
+    // Failure callback
+    Log.d("TAG", "Collection failed with sessionId $error, $sessionId")
+    Log.d("TAG", "DDC status is ${KountSDK.getCollectionStatus()}")
+})
+```
+
+<Tip>
+Kotlin's string interpolation (`$sessionId` and `${expression}`) makes logging cleaner and more readable than Java's string concatenation.
+</Tip>
+
+### Step 3: Retrieve Session ID
+
+Retrieve the session ID using Kotlin's concise syntax:
+
+```kotlin
+class CollectionActivity : AppCompatActivity() {
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_collection)
+        
+        val textArea = findViewById<TextView>(R.id.textarea)
+        
+        // Get the session ID
+        val deviceSessionID = KountSDK.getSessionId()
+        textArea.append("Session ID:\n$deviceSessionID\n\n")
+        
+        // Get collection status
+        val status = KountSDK.getCollectionStatus()
+        textArea.append("Collection Status: $status\n\n")
+        
+        // Check if collection failed
+        if (status == CollectionStatus.FAILED.toString()) {
+            textArea.append("Error: $status")
+        }
+    }
+}
+```
+
+## Complete Example
+
+Here's a complete Kotlin example with idiomatic patterns:
+
+```kotlin
+package com.kount.checkoutexample.kotlin
+
+import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.util.Log
+import android.widget.Button
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.kount.api.KountSDK
+
+class MainActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsResultCallback {
+    
+    private val ENVIRONMENT: Int = KountSDK.ENVIRONMENT_TEST
+    
+    private lateinit var merchant: TextView
+    private lateinit var environment: TextView
+    private lateinit var checkoutButton: Button
+    private lateinit var location: TextView
+    
+    companion object {
+        const val MERCHANT_ID = "999999"
+    }
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        title = "Sample"
+        
+        // Initialize views
+        merchant = findViewById(R.id.merchant)
+        environment = findViewById(R.id.environment)
+        checkoutButton = findViewById(R.id.checkoutButton)
+        location = findViewById(R.id.location)
+        
+        // Initialize SDK
+        KountSDK.setMerchantId(MERCHANT_ID)
+        KountSDK.setCollectAnalytics(true)
+        KountSDK.setEnvironment(ENVIRONMENT)
+        
+        // Update UI
+        merchant.text = MERCHANT_ID
+        environment.text = when (ENVIRONMENT) {
+            KountSDK.ENVIRONMENT_TEST -> "Test"
+            KountSDK.ENVIRONMENT_PRODUCTION -> "Production"
+            else -> "Unknown"
+        }
+        
+        // Set up button click listener with lambda
+        checkoutButton.setOnClickListener {
+            startActivity(Intent(this@MainActivity, CollectionActivity::class.java))
+        }
+        
+        Log.d("TAG", "DDC status is ${KountSDK.getCollectionStatus()}")
+        
+        // Request permissions for Android M+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestLocationPermission(this)
+        } else {
+            location.text = "Allowed"
+            startDataCollection()
+        }
+    }
+    
+    private fun startDataCollection() {
+        KountSDK.collectForSession(this, { sessionId ->
+            Log.d("TAG", "Success completed with sessionId $sessionId")
+            Log.d("TAG", "DDC status is ${KountSDK.getCollectionStatus()}")
+        }, { sessionId, error ->
+            Log.d("TAG", "Failed with sessionId $error, $sessionId")
+            Log.d("TAG", "DDC status is ${KountSDK.getCollectionStatus()}")
+        })
+    }
+    
+    private fun requestLocationPermission(activity: Activity) {
+        if (ContextCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                activity,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                KountSDK.REQUEST_PERMISSION_LOCATION
+            )
+        } else {
+            location.text = "Allowed"
+            startDataCollection()
+        }
+    }
+    
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+            startDataCollection()
+            
+            location.text = if (grantResults.isNotEmpty() && 
+                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                "Allowed"
+            } else {
+                "Denied"
+            }
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+}
+```
+
+## Kotlin-Specific Features
+
+### Using When Expression
+
+Kotlin's `when` expression is more powerful than Java's `switch`:
+
+```kotlin
+val environmentText = when (ENVIRONMENT) {
+    KountSDK.ENVIRONMENT_TEST -> "Test"
+    KountSDK.ENVIRONMENT_PRODUCTION -> "Production"
+    else -> "Unknown"
+}
+```
+
+### String Interpolation
+
+Use string templates for cleaner string formatting:
+
+```kotlin
+// Instead of: "Session ID: " + sessionId
+Log.d("TAG", "Session ID: $sessionId")
+
+// For expressions:
+Log.d("TAG", "Status: ${KountSDK.getCollectionStatus()}")
+```
+
+### Lambda Expression Callbacks
+
+Trailing lambda syntax for cleaner callbacks:
+
+```kotlin
+KountSDK.collectForSession(this, 
+    { sessionId ->
+        handleSuccess(sessionId)
+    },
+    { sessionId, error ->
+        handleFailure(sessionId, error)
+    }
+)
+```
+
+### Safe Type Casting
+
+Use Kotlin's safe casting and null safety:
+
+```kotlin
+val textArea = findViewById<TextView>(R.id.textarea)
+textArea?.append("Session ID:\n$deviceSessionID\n\n")
+```
+
+### Array Creation
+
+Kotlin uses `arrayOf()` instead of Java's array syntax:
+
+```kotlin
+ActivityCompat.requestPermissions(
+    activity,
+    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+    KountSDK.REQUEST_PERMISSION_LOCATION
+)
+```
+
+## Checking Collection Status
+
+Use Kotlin's equality operators and when expressions:
+
+```kotlin
+import com.kount.api.internal.analytics.entities.CollectionStatus
+
+val status = KountSDK.getCollectionStatus()
+
+when (status) {
+    CollectionStatus.FAILED.toString() -> {
+        Log.e("TAG", "Collection failed: $status")
+    }
+    CollectionStatus.COMPLETED.toString() -> {
+        val sessionId = KountSDK.getSessionId()
+        // Send sessionId to your server
+    }
+    else -> {
+        Log.d("TAG", "Collection in progress: $status")
+    }
+}
+```
+
+<Warning>
+Always check the collection status before sending the session ID to your backend. Sending an incomplete or failed session ID may result in inaccurate fraud detection.
+</Warning>
+
+## Extension Functions (Optional)
+
+You can create extension functions for even cleaner code:
+
+```kotlin
+// Extension function for Activity
+fun Activity.hasLocationPermission(): Boolean {
+    return ContextCompat.checkSelfPermission(
+        this,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED
+}
+
+// Usage
+if (hasLocationPermission()) {
+    startDataCollection()
+} else {
+    requestLocationPermission(this)
+}
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Lateinit" icon="code">
+    Use `lateinit` for views initialized in `onCreate()` instead of nullable types.
+  </Card>
+  
+  <Card title="Leverage Lambdas" icon="function">
+    Take advantage of Kotlin's lambda syntax for cleaner callback handling.
+  </Card>
+  
+  <Card title="String Templates" icon="text">
+    Use string interpolation (`$variable`) instead of concatenation for better readability.
+  </Card>
+  
+  <Card title="When Expressions" icon="code-branch">
+    Use `when` expressions instead of multiple `if-else` statements.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration Options" icon="gear" href="/guides/configuration">
+    Learn about all available SDK configuration options
+  </Card>
+  
+  <Card title="Permission Handling" icon="lock" href="/guides/permissions">
+    Detailed guide on handling location permissions
+  </Card>
+  
+  <Card title="Java Integration" icon="coffee" href="/guides/java-integration">
+    See the Java integration approach
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api/kount-sdk">
+    Complete API documentation
+  </Card>
+</CardGroup>

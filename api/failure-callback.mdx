@@ -1,0 +1,585 @@
+---
+title: 'Failure Callback'
+description: 'Callback invoked when device data collection fails'
+---
+
+## Overview
+
+The failure callback is invoked when device data collection fails. It provides both the session ID (if available) and an error message describing what went wrong.
+
+## Signature
+
+### Kotlin
+
+In Kotlin, the failure callback is a lambda function with the following signature:
+
+```kotlin
+(sessionId: String, error: String) -> Unit
+```
+
+<ParamField path="sessionId" type="String">
+  The session identifier, if one was generated before the failure occurred. May be empty if the failure happened before session creation.
+</ParamField>
+
+<ParamField path="error" type="String">
+  A description of the error that caused the collection to fail. Use this for logging and debugging.
+</ParamField>
+
+### Java
+
+In Java, the callback is implemented as a functional interface (lambda) with a `Unit` return type:
+
+```java
+(String sessionId, String error) -> Unit
+```
+
+Since Java lambdas require a return statement for the `Unit` type, always return `null`:
+
+```java
+(sessionId, error) -> {
+    // Your code here
+    return null;
+}
+```
+
+## Usage
+
+### Kotlin Example
+
+```kotlin
+KountSDK.collectForSession(
+    context = this,
+    onSuccess = { sessionId ->
+        Log.d("Kount", "Success: $sessionId")
+        submitOrderWithSessionId(sessionId)
+    },
+    onFailure = { sessionId, error ->
+        Log.e("Kount", "Collection failed: $error")
+        Log.e("Kount", "Session ID: $sessionId")
+        
+        // Handle the failure
+        handleCollectionFailure(error)
+    }
+)
+```
+
+### Java Example
+
+```java
+KountSDK.INSTANCE.collectForSession(
+    this,
+    (sessionId) -> {
+        Log.d("Kount", "Success: " + sessionId);
+        submitOrderWithSessionId(sessionId);
+        return null;
+    },
+    (sessionId, error) -> {
+        Log.e("Kount", "Collection failed: " + error);
+        Log.e("Kount", "Session ID: " + sessionId);
+        
+        // Handle the failure
+        handleCollectionFailure(error);
+        
+        return null; // Required for Java lambdas
+    }
+);
+```
+
+## When Is It Called?
+
+The failure callback is invoked when:
+
+- Network connectivity issues prevent data collection
+- The SDK configuration is invalid (missing merchant ID, invalid environment)
+- Required permissions are denied
+- The collection status becomes `CollectionStatus.FAILED`
+- Internal errors occur during the collection process
+
+The callback is called asynchronously on the main thread, making it safe to update UI elements.
+
+## What to Do in the Callback
+
+<Steps>
+  <Step title="Log the Error">
+    Always log errors for debugging and monitoring purposes.
+    
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId -> handleSuccess(sessionId) },
+        { sessionId, error ->
+            Log.e("Kount", "Failed with error: $error")
+            if (sessionId.isNotEmpty()) {
+                Log.e("Kount", "Partial session ID: $sessionId")
+            }
+            
+            // Send to error tracking service
+            if (BuildConfig.DEBUG) {
+                Crashlytics.log("Kount collection failed: $error")
+            }
+        }
+    )
+    ```
+  </Step>
+  
+  <Step title="Update UI">
+    Provide user feedback and update the UI appropriately.
+    
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId -> handleSuccess(sessionId) },
+        { sessionId, error ->
+            // Hide loading indicator
+            progressBar.visibility = View.GONE
+            
+            // Show error message
+            Toast.makeText(
+                this,
+                "Unable to verify device. Please try again.",
+                Toast.LENGTH_LONG
+            ).show()
+            
+            // Show retry button
+            retryButton.visibility = View.VISIBLE
+        }
+    )
+    ```
+  </Step>
+  
+  <Step title="Implement Retry Logic">
+    Optionally retry the collection process.
+    
+    ```kotlin
+    private var retryCount = 0
+    private val maxRetries = 3
+    
+    private fun attemptCollection() {
+        KountSDK.collectForSession(
+            this,
+            { sessionId -> handleSuccess(sessionId) },
+            { sessionId, error ->
+                Log.e("Kount", "Attempt ${retryCount + 1} failed: $error")
+                
+                if (retryCount < maxRetries) {
+                    retryCount++
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        attemptCollection()
+                    }, 2000) // Wait 2 seconds before retry
+                } else {
+                    handleMaxRetriesExceeded(error)
+                }
+            }
+        )
+    }
+    ```
+  </Step>
+  
+  <Step title="Decide on Fallback">
+    Determine whether to proceed without device data or block the transaction.
+    
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId -> handleSuccess(sessionId) },
+        { sessionId, error ->
+            Log.e("Kount", "Collection failed: $error")
+            
+            // Option 1: Proceed without device data
+            showWarningDialog(
+                "Device verification failed. You may proceed, but transaction may require additional verification."
+            ) {
+                proceedWithoutKount()
+            }
+            
+            // Option 2: Block transaction
+            // showErrorDialog("Unable to process transaction. Please try again later.")
+        }
+    )
+    ```
+  </Step>
+</Steps>
+
+## Complete Examples
+
+### Basic Error Handling
+
+**Kotlin:**
+
+```kotlin
+class CheckoutActivity : AppCompatActivity() {
+    
+    private lateinit var progressBar: ProgressBar
+    private lateinit var retryButton: Button
+    private lateinit var checkoutButton: Button
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_checkout)
+        
+        progressBar = findViewById(R.id.progressBar)
+        retryButton = findViewById(R.id.retryButton)
+        checkoutButton = findViewById(R.id.checkoutButton)
+        
+        retryButton.setOnClickListener {
+            initiateCollection()
+        }
+        
+        initiateCollection()
+    }
+    
+    private fun initiateCollection() {
+        progressBar.visibility = View.VISIBLE
+        retryButton.visibility = View.GONE
+        checkoutButton.isEnabled = false
+        
+        KountSDK.collectForSession(
+            this,
+            { sessionId ->
+                handleCollectionSuccess(sessionId)
+            },
+            { sessionId, error ->
+                handleCollectionFailure(sessionId, error)
+            }
+        )
+    }
+    
+    private fun handleCollectionSuccess(sessionId: String) {
+        Log.d("Kount", "Collection successful: $sessionId")
+        
+        progressBar.visibility = View.GONE
+        checkoutButton.isEnabled = true
+        
+        Toast.makeText(this, "Device verified", Toast.LENGTH_SHORT).show()
+    }
+    
+    private fun handleCollectionFailure(sessionId: String, error: String) {
+        Log.e("Kount", "Collection failed: $error")
+        
+        if (sessionId.isNotEmpty()) {
+            Log.e("Kount", "Partial session ID: $sessionId")
+        }
+        
+        progressBar.visibility = View.GONE
+        retryButton.visibility = View.VISIBLE
+        
+        Toast.makeText(
+            this,
+            "Device verification failed. Please retry.",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+}
+```
+
+**Java:**
+
+```java
+public class CheckoutActivity extends AppCompatActivity {
+    
+    private ProgressBar progressBar;
+    private Button retryButton;
+    private Button checkoutButton;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_checkout);
+        
+        progressBar = findViewById(R.id.progressBar);
+        retryButton = findViewById(R.id.retryButton);
+        checkoutButton = findViewById(R.id.checkoutButton);
+        
+        retryButton.setOnClickListener(v -> initiateCollection());
+        
+        initiateCollection();
+    }
+    
+    private void initiateCollection() {
+        progressBar.setVisibility(View.VISIBLE);
+        retryButton.setVisibility(View.GONE);
+        checkoutButton.setEnabled(false);
+        
+        KountSDK.INSTANCE.collectForSession(
+            this,
+            (sessionId) -> {
+                handleCollectionSuccess(sessionId);
+                return null;
+            },
+            (sessionId, error) -> {
+                handleCollectionFailure(sessionId, error);
+                return null;
+            }
+        );
+    }
+    
+    private void handleCollectionSuccess(String sessionId) {
+        Log.d("Kount", "Collection successful: " + sessionId);
+        
+        progressBar.setVisibility(View.GONE);
+        checkoutButton.setEnabled(true);
+        
+        Toast.makeText(this, "Device verified", Toast.LENGTH_SHORT).show();
+    }
+    
+    private void handleCollectionFailure(String sessionId, String error) {
+        Log.e("Kount", "Collection failed: " + error);
+        
+        if (!sessionId.isEmpty()) {
+            Log.e("Kount", "Partial session ID: " + sessionId);
+        }
+        
+        progressBar.setVisibility(View.GONE);
+        retryButton.setVisibility(View.VISIBLE);
+        
+        Toast.makeText(
+            this,
+            "Device verification failed. Please retry.",
+            Toast.LENGTH_LONG
+        ).show();
+    }
+}
+```
+
+### Advanced: Retry with Exponential Backoff
+
+```kotlin
+class CheckoutActivity : AppCompatActivity() {
+    
+    private var retryCount = 0
+    private val maxRetries = 3
+    private val baseDelay = 1000L // 1 second
+    
+    private fun initiateCollection() {
+        progressBar.visibility = View.VISIBLE
+        
+        KountSDK.collectForSession(
+            this,
+            { sessionId ->
+                retryCount = 0 // Reset on success
+                handleSuccess(sessionId)
+            },
+            { sessionId, error ->
+                handleFailureWithRetry(sessionId, error)
+            }
+        )
+    }
+    
+    private fun handleFailureWithRetry(sessionId: String, error: String) {
+        Log.e("Kount", "Attempt ${retryCount + 1} failed: $error")
+        
+        if (retryCount < maxRetries) {
+            retryCount++
+            val delay = baseDelay * (1 shl (retryCount - 1)) // Exponential backoff
+            
+            showRetryMessage("Retrying in ${delay / 1000} seconds...")
+            
+            Handler(Looper.getMainLooper()).postDelayed({
+                initiateCollection()
+            }, delay)
+        } else {
+            handleFinalFailure(error)
+        }
+    }
+    
+    private fun handleFinalFailure(error: String) {
+        Log.e("Kount", "Max retries exceeded. Final error: $error")
+        
+        progressBar.visibility = View.GONE
+        
+        AlertDialog.Builder(this)
+            .setTitle("Verification Failed")
+            .setMessage("Unable to verify device after multiple attempts. Would you like to continue anyway?")
+            .setPositiveButton("Continue") { _, _ ->
+                proceedWithoutKount()
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+                finish()
+            }
+            .show()
+    }
+    
+    private fun proceedWithoutKount() {
+        checkoutButton.isEnabled = true
+        Toast.makeText(
+            this,
+            "Proceeding without device verification",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+}
+```
+
+### With ViewModel and LiveData
+
+```kotlin
+class CheckoutViewModel : ViewModel() {
+    
+    private val _collectionState = MutableLiveData<CollectionState>()
+    val collectionState: LiveData<CollectionState> = _collectionState
+    
+    private var retryCount = 0
+    private val maxRetries = 2
+    
+    fun startCollection(context: Context) {
+        _collectionState.value = CollectionState.InProgress
+        
+        KountSDK.collectForSession(
+            context,
+            { sessionId ->
+                retryCount = 0
+                _collectionState.value = CollectionState.Success(sessionId)
+            },
+            { sessionId, error ->
+                handleFailure(context, sessionId, error)
+            }
+        )
+    }
+    
+    private fun handleFailure(context: Context, sessionId: String, error: String) {
+        Log.e("Kount", "Collection failed: $error (attempt ${retryCount + 1})")
+        
+        if (retryCount < maxRetries) {
+            retryCount++
+            _collectionState.value = CollectionState.Retrying(retryCount)
+            
+            // Retry after delay
+            viewModelScope.launch {
+                delay(2000)
+                startCollection(context)
+            }
+        } else {
+            _collectionState.value = CollectionState.Failed(error)
+        }
+    }
+    
+    fun resetRetries() {
+        retryCount = 0
+    }
+}
+
+sealed class CollectionState {
+    object InProgress : CollectionState()
+    data class Retrying(val attempt: Int) : CollectionState()
+    data class Success(val sessionId: String) : CollectionState()
+    data class Failed(val error: String) : CollectionState()
+}
+```
+
+## Common Error Scenarios
+
+<AccordionGroup>
+  <Accordion title="Network Connectivity Issues">
+    The device may not have internet connectivity or the connection may be unstable.
+    
+    **Handling:**
+    ```kotlin
+    { sessionId, error ->
+        if (error.contains("network", ignoreCase = true)) {
+            Toast.makeText(
+                this,
+                "Please check your internet connection",
+                Toast.LENGTH_LONG
+            ).show()
+            showRetryOption()
+        }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Missing Configuration">
+    The merchant ID or environment may not be set properly.
+    
+    **Handling:**
+    ```kotlin
+    { sessionId, error ->
+        if (error.contains("configuration", ignoreCase = true)) {
+            Log.e("Kount", "SDK not configured properly: $error")
+            // This is a developer error - fix in code
+            if (BuildConfig.DEBUG) {
+                throw IllegalStateException("Kount SDK not configured: $error")
+            }
+        }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Permission Denied">
+    Location permissions may have been denied by the user.
+    
+    **Handling:**
+    ```kotlin
+    { sessionId, error ->
+        if (error.contains("permission", ignoreCase = true)) {
+            AlertDialog.Builder(this)
+                .setTitle("Location Permission")
+                .setMessage("Location permission helps prevent fraud. Grant permission for better protection.")
+                .setPositiveButton("Grant") { _, _ ->
+                    requestLocationPermission()
+                }
+                .setNegativeButton("Skip") { _, _ ->
+                    proceedWithoutLocation()
+                }
+                .show()
+        }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Timeout">
+    Collection may time out if it takes too long.
+    
+    **Handling:**
+    ```kotlin
+    { sessionId, error ->
+        if (error.contains("timeout", ignoreCase = true)) {
+            Log.w("Kount", "Collection timed out")
+            showRetryOption("Collection timed out. Try again?")
+        }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Always Log Errors" icon="file-lines">
+    Log all failures with sufficient context for debugging and monitoring.
+  </Card>
+  
+  <Card title="Implement Retry Logic" icon="rotate-right">
+    Retry collection at least once, with exponential backoff for multiple attempts.
+  </Card>
+  
+  <Card title="Provide User Feedback" icon="message">
+    Show clear, user-friendly messages without exposing technical details.
+  </Card>
+  
+  <Card title="Have a Fallback Plan" icon="life-ring">
+    Decide whether to proceed without device data or block the transaction.
+  </Card>
+</CardGroup>
+
+## Testing Failure Scenarios
+
+During development, test failure handling by:
+
+```kotlin
+// Test with airplane mode enabled
+// Test with invalid merchant ID
+KountSDK.setMerchantId("invalid")
+
+// Test with wrong environment
+KountSDK.setEnvironment(999)
+
+// Test without location permissions
+// Don't request ACCESS_FINE_LOCATION permission
+```
+
+## Related
+
+- [KountSDK](/api/kount-sdk) - Main SDK class with `collectForSession()` method
+- [Success Callback](/api/success-callback) - Callback invoked on successful collection
+- [CollectionStatus](/api/collection-status) - Status values for monitoring collection

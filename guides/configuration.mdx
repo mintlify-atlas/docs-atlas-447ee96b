@@ -1,0 +1,590 @@
+---
+title: "SDK Configuration"
+description: "Complete guide to configuring the Kount Android SDK with all available options"
+---
+
+## Overview
+
+The Kount Android SDK provides several configuration options to customize its behavior for your application. This guide covers all available configuration methods, their parameters, and best practices.
+
+## Required Configuration
+
+Before collecting device data, you must configure the SDK with at least your Merchant ID:
+
+<CodeGroup>
+```java Java
+import com.kount.api.KountSDK;
+
+public class MainActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        
+        // Minimum required configuration
+        KountSDK.INSTANCE.setMerchantId("999999");
+    }
+}
+```
+
+```kotlin Kotlin
+import com.kount.api.KountSDK
+
+class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        // Minimum required configuration
+        KountSDK.setMerchantId("999999")
+    }
+}
+```
+</CodeGroup>
+
+<Warning>
+The SDK will not function properly without a valid Merchant ID. Contact Kount support to obtain your production Merchant ID.
+</Warning>
+
+## Configuration Methods
+
+### setMerchantId()
+
+Sets your unique Kount Merchant ID.
+
+**Parameters:**
+- `merchantId` (String): Your 6-digit Kount Merchant ID
+
+**Example:**
+
+<CodeGroup>
+```java Java
+KountSDK.INSTANCE.setMerchantId("999999");
+```
+
+```kotlin Kotlin
+KountSDK.setMerchantId("999999")
+```
+</CodeGroup>
+
+<Note>
+"999999" is the test Merchant ID. Replace it with your actual Merchant ID for production use.
+</Note>
+
+---
+
+### setEnvironment()
+
+Configures the SDK to use either the test or production environment.
+
+**Parameters:**
+- `environment` (int): The target environment
+  - `KountSDK.ENVIRONMENT_TEST` - Test environment (default)
+  - `KountSDK.ENVIRONMENT_PRODUCTION` - Production environment
+
+**Example:**
+
+<CodeGroup>
+```java Java
+// Test environment
+KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_TEST);
+
+// Production environment
+KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_PRODUCTION);
+```
+
+```kotlin Kotlin
+// Test environment
+KountSDK.setEnvironment(KountSDK.ENVIRONMENT_TEST)
+
+// Production environment
+KountSDK.setEnvironment(KountSDK.ENVIRONMENT_PRODUCTION)
+```
+</CodeGroup>
+
+**Environment Details:**
+
+| Environment | Value | Description | Use Case |
+|------------|-------|-------------|----------|
+| `ENVIRONMENT_TEST` | Test | Sends data to Kount's test servers | Development and testing |
+| `ENVIRONMENT_PRODUCTION` | Production | Sends data to Kount's production servers | Live production apps |
+
+<Warning>
+Always use `ENVIRONMENT_TEST` during development and testing. Switch to `ENVIRONMENT_PRODUCTION` only for production releases.
+</Warning>
+
+---
+
+### setCollectAnalytics()
+
+Enables or disables advanced analytics collection.
+
+**Parameters:**
+- `enabled` (boolean): 
+  - `true` - Enable analytics collection (default)
+  - `false` - Disable analytics collection
+
+**Example:**
+
+<CodeGroup>
+```java Java
+// Enable analytics (default)
+KountSDK.INSTANCE.setCollectAnalytics(true);
+
+// Disable analytics
+KountSDK.INSTANCE.setCollectAnalytics(false);
+```
+
+```kotlin Kotlin
+// Enable analytics (default)
+KountSDK.setCollectAnalytics(true)
+
+// Disable analytics
+KountSDK.setCollectAnalytics(false)
+```
+</CodeGroup>
+
+**What Analytics Includes:**
+- Device behavioral patterns
+- App interaction metrics
+- Enhanced fraud signals
+- Advanced device fingerprinting
+
+<Tip>
+Keeping analytics enabled (default) provides the most accurate fraud detection. Only disable if you have specific privacy or performance requirements.
+</Tip>
+
+## Complete Configuration Example
+
+### Java Example
+
+```java
+package com.kount.checkoutexample;
+
+import android.os.Bundle;
+import android.util.Log;
+import androidx.appcompat.app.AppCompatActivity;
+import com.kount.api.KountSDK;
+
+public class MainActivity extends AppCompatActivity {
+    
+    // Configuration constants
+    private static final String MERCHANT_ID = "999999";
+    private static final int ENVIRONMENT = KountSDK.ENVIRONMENT_TEST;
+    private static final boolean ANALYTICS_ENABLED = true;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        
+        // Configure SDK
+        configureKountSDK();
+        
+        // Verify configuration
+        logConfiguration();
+    }
+    
+    private void configureKountSDK() {
+        // Set merchant ID (required)
+        KountSDK.INSTANCE.setMerchantId(MERCHANT_ID);
+        
+        // Set environment
+        KountSDK.INSTANCE.setEnvironment(ENVIRONMENT);
+        
+        // Enable/disable analytics
+        KountSDK.INSTANCE.setCollectAnalytics(ANALYTICS_ENABLED);
+        
+        Log.d("KountSDK", "SDK configured successfully");
+    }
+    
+    private void logConfiguration() {
+        String envName = ENVIRONMENT == KountSDK.ENVIRONMENT_TEST ? "Test" : "Production";
+        Log.d("KountSDK", "Merchant ID: " + MERCHANT_ID);
+        Log.d("KountSDK", "Environment: " + envName);
+        Log.d("KountSDK", "Analytics: " + (ANALYTICS_ENABLED ? "Enabled" : "Disabled"));
+        Log.d("KountSDK", "Status: " + KountSDK.INSTANCE.getCollectionStatus());
+    }
+}
+```
+
+### Kotlin Example
+
+```kotlin
+package com.kount.checkoutexample.kotlin
+
+import android.os.Bundle
+import android.util.Log
+import androidx.appcompat.app.AppCompatActivity
+import com.kount.api.KountSDK
+
+class MainActivity : AppCompatActivity() {
+    
+    companion object {
+        const val MERCHANT_ID = "999999"
+        const val ENVIRONMENT = KountSDK.ENVIRONMENT_TEST
+        const val ANALYTICS_ENABLED = true
+    }
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        
+        // Configure SDK
+        configureKountSDK()
+        
+        // Verify configuration
+        logConfiguration()
+    }
+    
+    private fun configureKountSDK() {
+        // Set merchant ID (required)
+        KountSDK.setMerchantId(MERCHANT_ID)
+        
+        // Set environment
+        KountSDK.setEnvironment(ENVIRONMENT)
+        
+        // Enable/disable analytics
+        KountSDK.setCollectAnalytics(ANALYTICS_ENABLED)
+        
+        Log.d("KountSDK", "SDK configured successfully")
+    }
+    
+    private fun logConfiguration() {
+        val envName = when (ENVIRONMENT) {
+            KountSDK.ENVIRONMENT_TEST -> "Test"
+            KountSDK.ENVIRONMENT_PRODUCTION -> "Production"
+            else -> "Unknown"
+        }
+        
+        Log.d("KountSDK", "Merchant ID: $MERCHANT_ID")
+        Log.d("KountSDK", "Environment: $envName")
+        Log.d("KountSDK", "Analytics: ${if (ANALYTICS_ENABLED) "Enabled" else "Disabled"}")
+        Log.d("KountSDK", "Status: ${KountSDK.getCollectionStatus()}")
+    }
+}
+```
+
+## Configuration Order
+
+The order of configuration calls does not matter, but all configuration must be completed before calling `collectForSession()`:
+
+```java
+// Correct - all configuration before collection
+KountSDK.INSTANCE.setMerchantId("999999");
+KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_TEST);
+KountSDK.INSTANCE.setCollectAnalytics(true);
+KountSDK.INSTANCE.collectForSession(this, successCallback, failureCallback);
+
+// Also correct - different order
+KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_TEST);
+KountSDK.INSTANCE.setCollectAnalytics(true);
+KountSDK.INSTANCE.setMerchantId("999999");
+KountSDK.INSTANCE.collectForSession(this, successCallback, failureCallback);
+```
+
+## Build-Specific Configuration
+
+Use BuildConfig to automatically switch configurations based on build type:
+
+<Tabs>
+  <Tab title="Java">
+```java
+public class MainActivity extends AppCompatActivity {
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        
+        // Automatically configure based on build type
+        KountSDK.INSTANCE.setMerchantId(getMerchantId());
+        KountSDK.INSTANCE.setEnvironment(getEnvironment());
+        KountSDK.INSTANCE.setCollectAnalytics(BuildConfig.DEBUG);
+    }
+    
+    private String getMerchantId() {
+        return BuildConfig.DEBUG ? "999999" : "123456";
+    }
+    
+    private int getEnvironment() {
+        return BuildConfig.DEBUG 
+            ? KountSDK.ENVIRONMENT_TEST 
+            : KountSDK.ENVIRONMENT_PRODUCTION;
+    }
+}
+```
+  </Tab>
+  
+  <Tab title="Kotlin">
+```kotlin
+class MainActivity : AppCompatActivity() {
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        // Automatically configure based on build type
+        KountSDK.setMerchantId(getMerchantId())
+        KountSDK.setEnvironment(getEnvironment())
+        KountSDK.setCollectAnalytics(BuildConfig.DEBUG)
+    }
+    
+    private fun getMerchantId(): String {
+        return if (BuildConfig.DEBUG) "999999" else "123456"
+    }
+    
+    private fun getEnvironment(): Int {
+        return if (BuildConfig.DEBUG) {
+            KountSDK.ENVIRONMENT_TEST
+        } else {
+            KountSDK.ENVIRONMENT_PRODUCTION
+        }
+    }
+}
+```
+  </Tab>
+</Tabs>
+
+## Using Gradle Build Variants
+
+Define configurations in `build.gradle`:
+
+```groovy
+android {
+    buildTypes {
+        debug {
+            buildConfigField "String", "KOUNT_MERCHANT_ID", '"999999"'
+            buildConfigField "int", "KOUNT_ENVIRONMENT", "0" // TEST
+        }
+        release {
+            buildConfigField "String", "KOUNT_MERCHANT_ID", '"123456"'
+            buildConfigField "int", "KOUNT_ENVIRONMENT", "1" // PRODUCTION
+        }
+    }
+}
+```
+
+Then use in code:
+
+<CodeGroup>
+```java Java
+KountSDK.INSTANCE.setMerchantId(BuildConfig.KOUNT_MERCHANT_ID);
+KountSDK.INSTANCE.setEnvironment(BuildConfig.KOUNT_ENVIRONMENT);
+```
+
+```kotlin Kotlin
+KountSDK.setMerchantId(BuildConfig.KOUNT_MERCHANT_ID)
+KountSDK.setEnvironment(BuildConfig.KOUNT_ENVIRONMENT)
+```
+</CodeGroup>
+
+## Configuration Validation
+
+Verify your configuration is correct:
+
+<CodeGroup>
+```java Java
+private void validateConfiguration() {
+    // Check collection status
+    String status = KountSDK.INSTANCE.getCollectionStatus();
+    Log.d("TAG", "Collection Status: " + status);
+    
+    // Verify configuration before proceeding
+    if (status.equals("NOT_CONFIGURED")) {
+        Log.e("TAG", "SDK not properly configured!");
+        // Handle error
+    }
+}
+```
+
+```kotlin Kotlin
+private fun validateConfiguration() {
+    // Check collection status
+    val status = KountSDK.getCollectionStatus()
+    Log.d("TAG", "Collection Status: $status")
+    
+    // Verify configuration before proceeding
+    if (status == "NOT_CONFIGURED") {
+        Log.e("TAG", "SDK not properly configured!")
+        // Handle error
+    }
+}
+```
+</CodeGroup>
+
+## Configuration Checklist
+
+Before releasing to production, verify:
+
+<Steps>
+  <Step title="Merchant ID Set">
+    Ensure you've called `setMerchantId()` with your production Merchant ID
+  </Step>
+  
+  <Step title="Production Environment">
+    Verify `setEnvironment(KountSDK.ENVIRONMENT_PRODUCTION)` for release builds
+  </Step>
+  
+  <Step title="Analytics Configured">
+    Decide if analytics should be enabled based on your requirements
+  </Step>
+  
+  <Step title="Configuration Timing">
+    Confirm all configuration is done before calling `collectForSession()`
+  </Step>
+  
+  <Step title="Test Both Environments">
+    Test your app in both test and production configurations
+  </Step>
+</Steps>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Early Configuration" icon="bolt">
+    Configure the SDK as early as possible, ideally in `Application.onCreate()` or the first Activity's `onCreate()`.
+  </Card>
+  
+  <Card title="Use Constants" icon="hashtag">
+    Store configuration values as constants or in BuildConfig for easy maintenance and build variant support.
+  </Card>
+  
+  <Card title="Environment Separation" icon="layer-group">
+    Always use separate Merchant IDs for test and production environments. Never use test credentials in production.
+  </Card>
+  
+  <Card title="Validate Configuration" icon="check">
+    Check the collection status after configuration to catch issues early.
+  </Card>
+</CardGroup>
+
+## Common Configuration Patterns
+
+### Application-Level Configuration
+
+Configure once in your Application class:
+
+<CodeGroup>
+```java Java
+public class MyApplication extends Application {
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        
+        // Configure SDK once for the entire app
+        KountSDK.INSTANCE.setMerchantId("999999");
+        KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_TEST);
+        KountSDK.INSTANCE.setCollectAnalytics(true);
+    }
+}
+```
+
+```kotlin Kotlin
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        
+        // Configure SDK once for the entire app
+        KountSDK.setMerchantId("999999")
+        KountSDK.setEnvironment(KountSDK.ENVIRONMENT_TEST)
+        KountSDK.setCollectAnalytics(true)
+    }
+}
+```
+</CodeGroup>
+
+Don't forget to register in `AndroidManifest.xml`:
+
+```xml
+<application
+    android:name=".MyApplication"
+    ...>
+</application>
+```
+
+### Configuration Helper Class
+
+Create a dedicated configuration class:
+
+<CodeGroup>
+```java Java
+public class KountConfig {
+    private static final String MERCHANT_ID = "999999";
+    
+    public static void initialize(Context context) {
+        KountSDK.INSTANCE.setMerchantId(MERCHANT_ID);
+        KountSDK.INSTANCE.setEnvironment(
+            BuildConfig.DEBUG 
+                ? KountSDK.ENVIRONMENT_TEST 
+                : KountSDK.ENVIRONMENT_PRODUCTION
+        );
+        KountSDK.INSTANCE.setCollectAnalytics(true);
+    }
+}
+
+// Usage
+KountConfig.initialize(this);
+```
+
+```kotlin Kotlin
+object KountConfig {
+    private const val MERCHANT_ID = "999999"
+    
+    fun initialize(context: Context) {
+        KountSDK.setMerchantId(MERCHANT_ID)
+        KountSDK.setEnvironment(
+            if (BuildConfig.DEBUG) {
+                KountSDK.ENVIRONMENT_TEST
+            } else {
+                KountSDK.ENVIRONMENT_PRODUCTION
+            }
+        )
+        KountSDK.setCollectAnalytics(true)
+    }
+}
+
+// Usage
+KountConfig.initialize(this)
+```
+</CodeGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="SDK not collecting data">
+    - Verify `setMerchantId()` was called with a valid Merchant ID
+    - Check that configuration was completed before `collectForSession()`
+    - Ensure you have internet permission in AndroidManifest.xml
+    - Review logs for any error messages
+  </Accordion>
+  
+  <Accordion title="Wrong environment being used">
+    - Double-check the `setEnvironment()` call
+    - Verify build variant configuration in build.gradle
+    - Use logging to confirm which environment is set at runtime
+    - Test with a debugger to inspect the environment value
+  </Accordion>
+  
+  <Accordion title="Analytics not being collected">
+    - Confirm `setCollectAnalytics(true)` was called
+    - Check that analytics is not disabled by build configuration
+    - Verify no ProGuard/R8 rules are interfering with SDK classes
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Java Integration" icon="coffee" href="/guides/java-integration">
+    Complete Java integration guide
+  </Card>
+  
+  <Card title="Kotlin Integration" icon="code" href="/guides/kotlin-integration">
+    Complete Kotlin integration guide
+  </Card>
+  
+  <Card title="Permission Handling" icon="lock" href="/guides/permissions">
+    Handle location permissions correctly
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api/kount-sdk">
+    Complete API documentation
+  </Card>
+</CardGroup>

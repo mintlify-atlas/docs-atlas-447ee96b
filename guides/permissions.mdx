@@ -1,0 +1,556 @@
+---
+title: "Location Permission Handling"
+description: "Complete guide for requesting and handling location permissions in the Kount Android SDK"
+---
+
+## Overview
+
+The Kount Android SDK collects device location data to enhance fraud detection accuracy. Starting with Android 6.0 (API level 23), apps must request runtime permissions to access location data. This guide shows you how to properly implement location permission handling.
+
+## Why Location Permissions Matter
+
+Location data helps Kount's fraud detection system by:
+- Identifying suspicious geographic patterns
+- Detecting location spoofing attempts
+- Verifying transaction authenticity
+- Improving risk assessment accuracy
+
+<Note>
+The SDK will still function without location permissions, but fraud detection accuracy may be reduced.
+</Note>
+
+## Required Manifest Permissions
+
+First, add the necessary permissions to your `AndroidManifest.xml`:
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.kount.checkoutexample">
+    
+    <!-- Fine location for precise device location -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    
+    <!-- Coarse location as fallback -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    
+    <!-- Internet permission (required for SDK) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    
+</manifest>
+```
+
+## Runtime Permission Flow
+
+### Android Version Check
+
+Always check the Android version before requesting runtime permissions:
+
+<CodeGroup>
+```java Java
+import android.os.Build;
+
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+    // Android 6.0+ requires runtime permissions
+    requestLocationPermission(this);
+} else {
+    // Pre-Android 6.0, permissions granted at install time
+    startDataCollection();
+}
+```
+
+```kotlin Kotlin
+import android.os.Build
+
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+    // Android 6.0+ requires runtime permissions
+    requestLocationPermission(this)
+} else {
+    // Pre-Android 6.0, permissions granted at install time
+    startDataCollection()
+}
+```
+</CodeGroup>
+
+## Implementing Permission Requests
+
+### Java Implementation
+
+```java
+import android.Manifest;
+import android.app.Activity;
+import android.content.pm.PackageManager;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import com.kount.api.KountSDK;
+
+public class MainActivity extends AppCompatActivity 
+        implements ActivityCompat.OnRequestPermissionsResultCallback {
+    
+    private void requestLocationPermission(Activity activity) {
+        // Check if permission is already granted
+        if (ContextCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.ACCESS_FINE_LOCATION
+        ) != PackageManager.PERMISSION_GRANTED) {
+            
+            // Check if we should show rationale
+            if (ActivityCompat.shouldShowRequestPermissionRationale(
+                    activity,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+            )) {
+                // Show explanation to user before requesting
+                // You can show a dialog or Toast here
+                ActivityCompat.requestPermissions(
+                        activity,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                        KountSDK.REQUEST_PERMISSION_LOCATION
+                );
+            } else {
+                // No explanation needed, request permission
+                ActivityCompat.requestPermissions(
+                        activity,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                        KountSDK.REQUEST_PERMISSION_LOCATION
+                );
+            }
+        } else {
+            // Permission already granted
+            startDataCollection();
+        }
+    }
+    
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode, 
+            String permissions[], 
+            int[] grantResults
+    ) {
+        if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+            // Start collection regardless of permission result
+            startDataCollection();
+            
+            // Check if permission was granted
+            if (grantResults.length > 0 && 
+                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d("TAG", "Location permission granted");
+                // Permission granted - SDK will collect location data
+            } else {
+                Log.d("TAG", "Location permission denied");
+                // Permission denied - SDK will still work without location
+            }
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
+    
+    private void startDataCollection() {
+        KountSDK.INSTANCE.collectForSession(this,
+            (sessionId) -> {
+                Log.d("TAG", "Collection completed: " + sessionId);
+                return null;
+            },
+            (sessionId, error) -> {
+                Log.d("TAG", "Collection failed: " + error);
+                return null;
+            }
+        );
+    }
+}
+```
+
+### Kotlin Implementation
+
+```kotlin
+import android.Manifest
+import android.app.Activity
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.kount.api.KountSDK
+
+class MainActivity : AppCompatActivity(), 
+        ActivityCompat.OnRequestPermissionsResultCallback {
+    
+    private fun requestLocationPermission(activity: Activity) {
+        // Check if permission is already granted
+        if (ContextCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            // Request permission
+            ActivityCompat.requestPermissions(
+                activity,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                KountSDK.REQUEST_PERMISSION_LOCATION
+            )
+        } else {
+            // Permission already granted
+            startDataCollection()
+        }
+    }
+    
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+            // Start collection regardless of permission result
+            startDataCollection()
+            
+            // Check result and update UI
+            val granted = grantResults.isNotEmpty() && 
+                grantResults[0] == PackageManager.PERMISSION_GRANTED
+            
+            Log.d("TAG", "Location permission: ${if (granted) "granted" else "denied"}")
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+    
+    private fun startDataCollection() {
+        KountSDK.collectForSession(this, { sessionId ->
+            Log.d("TAG", "Collection completed: $sessionId")
+        }, { sessionId, error ->
+            Log.d("TAG", "Collection failed: $error")
+        })
+    }
+}
+```
+
+## Permission Request Code
+
+The SDK provides a constant for the permission request code:
+
+```java
+KountSDK.REQUEST_PERMISSION_LOCATION
+```
+
+You can use this constant or define your own:
+
+```java
+private static final int PERMISSIONS_REQUEST_LOCATION = 0;
+```
+
+<Tip>
+Using the SDK's constant (`KountSDK.REQUEST_PERMISSION_LOCATION`) ensures consistency and avoids potential conflicts with other permission requests in your app.
+</Tip>
+
+## Permission Rationale
+
+Android recommends showing a rationale when requesting sensitive permissions:
+
+<CodeGroup>
+```java Java
+if (ActivityCompat.shouldShowRequestPermissionRationale(
+        activity,
+        Manifest.permission.ACCESS_FINE_LOCATION
+)) {
+    // Show explanation dialog
+    new AlertDialog.Builder(activity)
+        .setTitle("Location Permission Needed")
+        .setMessage("This app needs location access to enhance security and prevent fraud.")
+        .setPositiveButton("OK", (dialog, which) -> {
+            ActivityCompat.requestPermissions(
+                activity,
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                KountSDK.REQUEST_PERMISSION_LOCATION
+            );
+        })
+        .setNegativeButton("Cancel", null)
+        .show();
+}
+```
+
+```kotlin Kotlin
+if (ActivityCompat.shouldShowRequestPermissionRationale(
+        activity,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    )
+) {
+    // Show explanation dialog
+    AlertDialog.Builder(activity)
+        .setTitle("Location Permission Needed")
+        .setMessage("This app needs location access to enhance security and prevent fraud.")
+        .setPositiveButton("OK") { _, _ ->
+            ActivityCompat.requestPermissions(
+                activity,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                KountSDK.REQUEST_PERMISSION_LOCATION
+            )
+        }
+        .setNegativeButton("Cancel", null)
+        .show()
+}
+```
+</CodeGroup>
+
+## Handling Permission Results
+
+### All Scenarios
+
+1. **Permission Granted**: SDK collects location data for enhanced fraud detection
+2. **Permission Denied**: SDK continues without location data
+3. **Permission Permanently Denied**: User must manually enable in app settings
+
+### Checking Permission Status
+
+<CodeGroup>
+```java Java
+boolean hasPermission = ContextCompat.checkSelfPermission(
+    this,
+    Manifest.permission.ACCESS_FINE_LOCATION
+) == PackageManager.PERMISSION_GRANTED;
+
+if (hasPermission) {
+    // Location access granted
+} else {
+    // Location access denied or not requested
+}
+```
+
+```kotlin Kotlin
+val hasPermission = ContextCompat.checkSelfPermission(
+    this,
+    Manifest.permission.ACCESS_FINE_LOCATION
+) == PackageManager.PERMISSION_GRANTED
+
+if (hasPermission) {
+    // Location access granted
+} else {
+    // Location access denied or not requested
+}
+```
+</CodeGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Request Early" icon="clock">
+    Request location permissions early in the app flow, ideally during initial setup or first-time experience.
+  </Card>
+  
+  <Card title="Show Rationale" icon="message">
+    Always explain why you need location access. Users are more likely to grant permissions when they understand the benefit.
+  </Card>
+  
+  <Card title="Handle Denial" icon="ban">
+    Always start data collection even if permission is denied. The SDK will work without location data.
+  </Card>
+  
+  <Card title="Test Scenarios" icon="flask">
+    Test your app with permissions granted, denied, and permanently denied to ensure proper handling.
+  </Card>
+</CardGroup>
+
+## Complete Permission Flow Example
+
+Here's a complete example with UI updates:
+
+<Tabs>
+  <Tab title="Java">
+```java
+public class MainActivity extends AppCompatActivity 
+        implements ActivityCompat.OnRequestPermissionsResultCallback {
+    
+    private TextView locationStatus;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        
+        locationStatus = findViewById(R.id.location);
+        
+        // Initialize SDK
+        KountSDK.INSTANCE.setMerchantId("999999");
+        KountSDK.INSTANCE.setCollectAnalytics(true);
+        KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_TEST);
+        
+        // Handle permissions
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestLocationPermission(this);
+        } else {
+            locationStatus.setText("Allowed");
+            startDataCollection();
+        }
+    }
+    
+    private void requestLocationPermission(Activity activity) {
+        if (ContextCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.ACCESS_FINE_LOCATION
+        ) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                    activity,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    KountSDK.REQUEST_PERMISSION_LOCATION
+            );
+        } else {
+            locationStatus.setText("Allowed");
+            startDataCollection();
+        }
+    }
+    
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            String permissions[],
+            int[] grantResults
+    ) {
+        if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+            startDataCollection();
+            
+            if (grantResults.length > 0 && 
+                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                locationStatus.setText("Allowed");
+            } else {
+                locationStatus.setText("Denied");
+            }
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
+    
+    private void startDataCollection() {
+        KountSDK.INSTANCE.collectForSession(this,
+            (sessionId) -> {
+                Log.d("TAG", "Success: " + sessionId);
+                return null;
+            },
+            (sessionId, error) -> {
+                Log.d("TAG", "Failed: " + error);
+                return null;
+            }
+        );
+    }
+}
+```
+  </Tab>
+  
+  <Tab title="Kotlin">
+```kotlin
+class MainActivity : AppCompatActivity(), 
+        ActivityCompat.OnRequestPermissionsResultCallback {
+    
+    private lateinit var locationStatus: TextView
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        
+        locationStatus = findViewById(R.id.location)
+        
+        // Initialize SDK
+        KountSDK.setMerchantId("999999")
+        KountSDK.setCollectAnalytics(true)
+        KountSDK.setEnvironment(KountSDK.ENVIRONMENT_TEST)
+        
+        // Handle permissions
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestLocationPermission(this)
+        } else {
+            locationStatus.text = "Allowed"
+            startDataCollection()
+        }
+    }
+    
+    private fun requestLocationPermission(activity: Activity) {
+        if (ContextCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                activity,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                KountSDK.REQUEST_PERMISSION_LOCATION
+            )
+        } else {
+            locationStatus.text = "Allowed"
+            startDataCollection()
+        }
+    }
+    
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+            startDataCollection()
+            
+            locationStatus.text = if (grantResults.isNotEmpty() && 
+                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                "Allowed"
+            } else {
+                "Denied"
+            }
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+    
+    private fun startDataCollection() {
+        KountSDK.collectForSession(this, { sessionId ->
+            Log.d("TAG", "Success: $sessionId")
+        }, { sessionId, error ->
+            Log.d("TAG", "Failed: $error")
+        })
+    }
+}
+```
+  </Tab>
+</Tabs>
+
+<Warning>
+Always call `startDataCollection()` or `collectForSession()` regardless of permission results. The SDK will collect available data and work without location if permission is denied.
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Permission dialog not showing">
+    - Verify permissions are declared in `AndroidManifest.xml`
+    - Check that you're testing on Android 6.0+ (API level 23+)
+    - Ensure you're not checking permission status incorrectly
+    - Clear app data and reinstall to reset permission state
+  </Accordion>
+  
+  <Accordion title="Permission permanently denied">
+    If a user selects "Don't ask again" and denies permission:
+    - `shouldShowRequestPermissionRationale()` returns `false`
+    - You must direct users to app settings to manually enable
+    - Use an Intent to open app settings:
+    ```java
+    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+    Uri uri = Uri.fromParts("package", getPackageName(), null);
+    intent.setData(uri);
+    startActivity(intent);
+    ```
+  </Accordion>
+  
+  <Accordion title="Location data not being collected">
+    - Verify `ACCESS_FINE_LOCATION` permission is granted
+    - Check that device location services are enabled
+    - Ensure the app has network connectivity
+    - Review logs for any SDK error messages
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration Options" icon="gear" href="/guides/configuration">
+    Learn about all SDK configuration options
+  </Card>
+  
+  <Card title="Java Integration" icon="coffee" href="/guides/java-integration">
+    Complete Java integration guide
+  </Card>
+  
+  <Card title="Kotlin Integration" icon="code" href="/guides/kotlin-integration">
+    Complete Kotlin integration guide
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api/kount-sdk">
+    Complete API documentation
+  </Card>
+</CardGroup>

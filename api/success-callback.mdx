@@ -1,0 +1,452 @@
+---
+title: 'Success Callback'
+description: 'Callback invoked when device data collection completes successfully'
+---
+
+## Overview
+
+The success callback is invoked when device data collection completes successfully. It provides the session ID that should be sent to your backend for fraud evaluation.
+
+## Signature
+
+### Kotlin
+
+In Kotlin, the success callback is a lambda function with the following signature:
+
+```kotlin
+(sessionId: String) -> Unit
+```
+
+<ParamField path="sessionId" type="String">
+  The unique session identifier generated for this collection session. Send this ID to your backend to include in fraud evaluation requests.
+</ParamField>
+
+### Java
+
+In Java, the callback is implemented as a functional interface (lambda) with a `Unit` return type:
+
+```java
+(String sessionId) -> Unit
+```
+
+Since Java lambdas require a return statement for the `Unit` type, always return `null`:
+
+```java
+(sessionId) -> {
+    // Your code here
+    return null;
+}
+```
+
+## Usage
+
+### Kotlin Example
+
+```kotlin
+KountSDK.collectForSession(
+    context = this,
+    onSuccess = { sessionId ->
+        Log.d("Kount", "Collection completed with session ID: $sessionId")
+        
+        // Send session ID to your backend
+        submitOrderWithSessionId(sessionId)
+    },
+    onFailure = { sessionId, error ->
+        Log.e("Kount", "Collection failed: $error")
+    }
+)
+```
+
+### Java Example
+
+```java
+KountSDK.INSTANCE.collectForSession(
+    this,
+    (sessionId) -> {
+        Log.d("Kount", "Collection completed with session ID: " + sessionId);
+        
+        // Send session ID to your backend
+        submitOrderWithSessionId(sessionId);
+        
+        return null; // Required for Java lambdas
+    },
+    (sessionId, error) -> {
+        Log.e("Kount", "Collection failed: " + error);
+        return null; // Required for Java lambdas
+    }
+);
+```
+
+## When Is It Called?
+
+The success callback is invoked when:
+
+- Device data collection has completed successfully
+- The collection status becomes `CollectionStatus.COMPLETED`
+- A valid session ID has been generated
+
+The callback is called asynchronously on the main thread, making it safe to update UI elements.
+
+## What to Do in the Callback
+
+<Steps>
+  <Step title="Store the Session ID">
+    Save the session ID for use in your transaction flow.
+    
+    ```kotlin
+    private var kountSessionId: String? = null
+    
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            kountSessionId = sessionId
+            Log.d("Kount", "Stored session ID: $sessionId")
+        },
+        { _, error -> handleError(error) }
+    )
+    ```
+  </Step>
+  
+  <Step title="Send to Backend">
+    Include the session ID in your API request to your backend server.
+    
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            val orderRequest = OrderRequest(
+                sessionId = sessionId,
+                amount = cartTotal,
+                items = cartItems
+            )
+            apiService.submitOrder(orderRequest)
+        },
+        { _, error -> handleError(error) }
+    )
+    ```
+  </Step>
+  
+  <Step title="Update UI">
+    Provide visual feedback that collection is complete.
+    
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            // Hide loading indicator
+            progressBar.visibility = View.GONE
+            
+            // Enable checkout button
+            checkoutButton.isEnabled = true
+            checkoutButton.text = "Complete Purchase"
+            
+            // Store for later use
+            this.sessionId = sessionId
+        },
+        { _, error -> handleError(error) }
+    )
+    ```
+  </Step>
+  
+  <Step title="Log for Debugging">
+    Log the session ID during development for troubleshooting.
+    
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            if (BuildConfig.DEBUG) {
+                Log.d("Kount", "Success - Session ID: $sessionId")
+                Log.d("Kount", "Status: ${KountSDK.getCollectionStatus()}")
+            }
+            proceedWithCheckout(sessionId)
+        },
+        { _, error -> handleError(error) }
+    )
+    ```
+  </Step>
+</Steps>
+
+## Complete Examples
+
+### E-commerce Checkout Flow
+
+**Kotlin:**
+
+```kotlin
+class CheckoutActivity : AppCompatActivity() {
+    
+    private var sessionId: String? = null
+    private lateinit var progressBar: ProgressBar
+    private lateinit var checkoutButton: Button
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_checkout)
+        
+        progressBar = findViewById(R.id.progressBar)
+        checkoutButton = findViewById(R.id.checkoutButton)
+        
+        initiateKountCollection()
+    }
+    
+    private fun initiateKountCollection() {
+        progressBar.visibility = View.VISIBLE
+        checkoutButton.isEnabled = false
+        
+        KountSDK.collectForSession(
+            this,
+            { sessionId ->
+                handleCollectionSuccess(sessionId)
+            },
+            { sessionId, error ->
+                handleCollectionFailure(sessionId, error)
+            }
+        )
+    }
+    
+    private fun handleCollectionSuccess(sessionId: String) {
+        this.sessionId = sessionId
+        
+        Log.d("Kount", "Collection successful: $sessionId")
+        
+        // Update UI
+        progressBar.visibility = View.GONE
+        checkoutButton.isEnabled = true
+        
+        // Optionally auto-proceed or wait for user action
+        Toast.makeText(this, "Ready to checkout", Toast.LENGTH_SHORT).show()
+    }
+    
+    private fun submitOrder() {
+        val currentSessionId = sessionId ?: run {
+            Toast.makeText(this, "Session not ready", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        // Send to backend
+        val request = OrderRequest(
+            sessionId = currentSessionId,
+            items = getCartItems(),
+            total = getCartTotal()
+        )
+        
+        apiService.submitOrder(request)
+            .enqueue(object : Callback<OrderResponse> {
+                override fun onResponse(call: Call<OrderResponse>, response: Response<OrderResponse>) {
+                    if (response.isSuccessful) {
+                        showOrderConfirmation()
+                    }
+                }
+                
+                override fun onFailure(call: Call<OrderResponse>, t: Throwable) {
+                    showError(t.message)
+                }
+            })
+    }
+}
+```
+
+**Java:**
+
+```java
+public class CheckoutActivity extends AppCompatActivity {
+    
+    private String sessionId;
+    private ProgressBar progressBar;
+    private Button checkoutButton;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_checkout);
+        
+        progressBar = findViewById(R.id.progressBar);
+        checkoutButton = findViewById(R.id.checkoutButton);
+        
+        initiateKountCollection();
+    }
+    
+    private void initiateKountCollection() {
+        progressBar.setVisibility(View.VISIBLE);
+        checkoutButton.setEnabled(false);
+        
+        KountSDK.INSTANCE.collectForSession(
+            this,
+            (sessionId) -> {
+                handleCollectionSuccess(sessionId);
+                return null;
+            },
+            (sessionId, error) -> {
+                handleCollectionFailure(sessionId, error);
+                return null;
+            }
+        );
+    }
+    
+    private void handleCollectionSuccess(String sessionId) {
+        this.sessionId = sessionId;
+        
+        Log.d("Kount", "Collection successful: " + sessionId);
+        
+        // Update UI
+        progressBar.setVisibility(View.GONE);
+        checkoutButton.setEnabled(true);
+        
+        Toast.makeText(this, "Ready to checkout", Toast.LENGTH_SHORT).show();
+    }
+    
+    private void submitOrder() {
+        if (sessionId == null) {
+            Toast.makeText(this, "Session not ready", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Send to backend
+        OrderRequest request = new OrderRequest(
+            sessionId,
+            getCartItems(),
+            getCartTotal()
+        );
+        
+        apiService.submitOrder(request)
+            .enqueue(new Callback<OrderResponse>() {
+                @Override
+                public void onResponse(Call<OrderResponse> call, Response<OrderResponse> response) {
+                    if (response.isSuccessful()) {
+                        showOrderConfirmation();
+                    }
+                }
+                
+                @Override
+                public void onFailure(Call<OrderResponse> call, Throwable t) {
+                    showError(t.getMessage());
+                }
+            });
+    }
+}
+```
+
+### With ViewModel (Kotlin)
+
+```kotlin
+class CheckoutViewModel : ViewModel() {
+    
+    private val _sessionId = MutableLiveData<String>()
+    val sessionId: LiveData<String> = _sessionId
+    
+    private val _collectionStatus = MutableLiveData<CollectionState>()
+    val collectionStatus: LiveData<CollectionState> = _collectionStatus
+    
+    fun startCollection(context: Context) {
+        _collectionStatus.value = CollectionState.InProgress
+        
+        KountSDK.collectForSession(
+            context,
+            { sessionId ->
+                handleSuccess(sessionId)
+            },
+            { sessionId, error ->
+                handleFailure(sessionId, error)
+            }
+        )
+    }
+    
+    private fun handleSuccess(sessionId: String) {
+        _sessionId.value = sessionId
+        _collectionStatus.value = CollectionState.Success(sessionId)
+        Log.d("Kount", "ViewModel received session ID: $sessionId")
+    }
+    
+    private fun handleFailure(sessionId: String, error: String) {
+        _collectionStatus.value = CollectionState.Failed(error)
+        Log.e("Kount", "Collection failed: $error")
+    }
+}
+
+sealed class CollectionState {
+    object InProgress : CollectionState()
+    data class Success(val sessionId: String) : CollectionState()
+    data class Failed(val error: String) : CollectionState()
+}
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Always Send to Backend" icon="server">
+    The session ID must be included in your fraud evaluation request to Kount. Never skip this step.
+  </Card>
+  
+  <Card title="Store Temporarily" icon="floppy-disk">
+    Store the session ID only for the duration of the current transaction. Don't persist it long-term.
+  </Card>
+  
+  <Card title="Handle UI Updates" icon="window">
+    Update your UI to reflect successful collection and enable transaction flows.
+  </Card>
+  
+  <Card title="Log During Development" icon="bug">
+    Log session IDs in debug builds to help troubleshoot integration issues.
+  </Card>
+</CardGroup>
+
+## Common Patterns
+
+### Pattern: Store and Submit
+
+```kotlin
+private var kountSessionId: String? = null
+
+fun initializeCheckout() {
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            kountSessionId = sessionId
+            enableCheckoutButton()
+        },
+        { _, error -> handleError(error) }
+    )
+}
+
+fun onCheckoutClicked() {
+    kountSessionId?.let { sessionId ->
+        submitOrder(sessionId)
+    }
+}
+```
+
+### Pattern: Immediate Submission
+
+```kotlin
+fun collectAndSubmit() {
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            // Immediately submit to backend
+            submitOrder(sessionId)
+        },
+        { _, error -> handleError(error) }
+    )
+}
+```
+
+### Pattern: LiveData Integration
+
+```kotlin
+val sessionId = MutableLiveData<String>()
+
+KountSDK.collectForSession(
+    this,
+    { id ->
+        sessionId.postValue(id)
+    },
+    { _, error -> handleError(error) }
+)
+```
+
+## Related
+
+- [KountSDK](/api/kount-sdk) - Main SDK class with `collectForSession()` method
+- [Failure Callback](/api/failure-callback) - Callback invoked on collection failure
+- [CollectionStatus](/api/collection-status) - Status values for monitoring collection

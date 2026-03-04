@@ -1,0 +1,369 @@
+---
+title: 'KountSDK'
+description: 'Main SDK class for device data collection and session management'
+---
+
+## Overview
+
+The `KountSDK` class is the primary interface for integrating Kount device data collection into your Android application. It provides methods to configure the SDK, initiate data collection, and retrieve session information.
+
+### Package
+
+```
+com.kount.api.KountSDK
+```
+
+### Usage in Kotlin
+
+Access the singleton instance directly:
+
+```kotlin
+KountSDK.setMerchantId("999999")
+KountSDK.collectForSession(context, successCallback, failureCallback)
+```
+
+### Usage in Java
+
+Access through the `INSTANCE` property:
+
+```java
+KountSDK.INSTANCE.setMerchantId("999999");
+KountSDK.INSTANCE.collectForSession(context, successCallback, failureCallback);
+```
+
+## Configuration Methods
+
+### setMerchantId()
+
+Sets the merchant identifier for the SDK.
+
+```kotlin
+KountSDK.setMerchantId(merchantId: String)
+```
+
+<ParamField path="merchantId" type="String" required>
+  Your unique Kount merchant ID (6-digit number). Contact Kount support to obtain your merchant ID.
+</ParamField>
+
+**Example:**
+
+```kotlin
+KountSDK.setMerchantId("999999")
+```
+
+```java
+KountSDK.INSTANCE.setMerchantId("999999");
+```
+
+### setEnvironment()
+
+Configures the SDK to connect to either the test or production environment.
+
+```kotlin
+KountSDK.setEnvironment(environment: Int)
+```
+
+<ParamField path="environment" type="Int" required>
+  The environment constant. Use `ENVIRONMENT_TEST` for testing or `ENVIRONMENT_PRODUCTION` for live transactions.
+</ParamField>
+
+**Example:**
+
+```kotlin
+KountSDK.setEnvironment(KountSDK.ENVIRONMENT_TEST)
+```
+
+```java
+KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_TEST);
+```
+
+<Warning>
+Always use `ENVIRONMENT_TEST` during development and testing. Only switch to `ENVIRONMENT_PRODUCTION` when deploying to production.
+</Warning>
+
+### setCollectAnalytics()
+
+Enables or disables analytics data collection.
+
+```kotlin
+KountSDK.setCollectAnalytics(enabled: Boolean)
+```
+
+<ParamField path="enabled" type="Boolean" required>
+  Set to `true` to enable analytics collection, or `false` to disable. Defaults to `true`.
+</ParamField>
+
+**Example:**
+
+```kotlin
+KountSDK.setCollectAnalytics(true)
+```
+
+```java
+KountSDK.INSTANCE.setCollectAnalytics(true);
+```
+
+## Collection Methods
+
+### collectForSession()
+
+Initiates device data collection for the current session.
+
+```kotlin
+KountSDK.collectForSession(
+    context: Context,
+    onSuccess: (String) -> Unit,
+    onFailure: (String, String) -> Unit
+)
+```
+
+<ParamField path="context" type="Context" required>
+  The Android Context (typically an Activity or Application context).
+</ParamField>
+
+<ParamField path="onSuccess" type="(String) -> Unit" required>
+  Success callback that receives the session ID when collection completes successfully.
+</ParamField>
+
+<ParamField path="onFailure" type="(String, String) -> Unit" required>
+  Failure callback that receives the session ID and error message if collection fails.
+</ParamField>
+
+**Kotlin Example:**
+
+```kotlin
+KountSDK.collectForSession(
+    this,
+    { sessionId ->
+        Log.d("Kount", "Success: $sessionId")
+        // Send sessionId to your backend
+    },
+    { sessionId, error ->
+        Log.e("Kount", "Failed: $error")
+        // Handle error
+    }
+)
+```
+
+**Java Example:**
+
+```java
+KountSDK.INSTANCE.collectForSession(
+    this,
+    (sessionId) -> {
+        Log.d("Kount", "Success: " + sessionId);
+        // Send sessionId to your backend
+        return null;
+    },
+    (sessionId, error) -> {
+        Log.e("Kount", "Failed: " + error);
+        // Handle error
+        return null;
+    }
+);
+```
+
+<Note>
+This method is asynchronous. The callbacks will be invoked when collection completes or fails.
+</Note>
+
+## Query Methods
+
+### getSessionId()
+
+Retrieves the current session ID.
+
+```kotlin
+KountSDK.getSessionId(): String
+```
+
+<ResponseField name="return" type="String">
+  The current session identifier. Returns an empty string if collection hasn't started.
+</ResponseField>
+
+**Example:**
+
+```kotlin
+val sessionId = KountSDK.getSessionId()
+println("Session ID: $sessionId")
+```
+
+```java
+String sessionId = KountSDK.INSTANCE.getSessionId();
+Log.d("Kount", "Session ID: " + sessionId);
+```
+
+### getCollectionStatus()
+
+Retrieves the current status of the data collection process.
+
+```kotlin
+KountSDK.getCollectionStatus(): String
+```
+
+<ResponseField name="return" type="String">
+  The collection status as a string. Possible values: "COMPLETED", "FAILED", "IN_PROGRESS".
+</ResponseField>
+
+**Example:**
+
+```kotlin
+val status = KountSDK.getCollectionStatus()
+when (status) {
+    CollectionStatus.COMPLETED.toString() -> println("Collection complete")
+    CollectionStatus.FAILED.toString() -> println("Collection failed")
+    CollectionStatus.IN_PROGRESS.toString() -> println("Collection in progress")
+}
+```
+
+```java
+String status = KountSDK.INSTANCE.getCollectionStatus();
+if (status.equals(CollectionStatus.COMPLETED.toString())) {
+    Log.d("Kount", "Collection complete");
+}
+```
+
+## Constants
+
+### REQUEST_PERMISSION_LOCATION
+
+Request code for location permission requests.
+
+```kotlin
+const val REQUEST_PERMISSION_LOCATION: Int
+```
+
+Use this constant when requesting location permissions to ensure the SDK can collect location data:
+
+**Example:**
+
+```kotlin
+ActivityCompat.requestPermissions(
+    activity,
+    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+    KountSDK.REQUEST_PERMISSION_LOCATION
+)
+
+override fun onRequestPermissionsResult(
+    requestCode: Int,
+    permissions: Array<out String>,
+    grantResults: IntArray
+) {
+    if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+        // Handle permission result
+        KountSDK.collectForSession(this, onSuccess, onFailure)
+    }
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+}
+```
+
+```java
+ActivityCompat.requestPermissions(
+    activity,
+    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+    KountSDK.REQUEST_PERMISSION_LOCATION
+);
+
+@Override
+public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+        // Handle permission result
+        KountSDK.INSTANCE.collectForSession(this, onSuccess, onFailure);
+    }
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+}
+```
+
+### ENVIRONMENT_TEST
+
+Environment constant for the test/sandbox environment.
+
+```kotlin
+const val ENVIRONMENT_TEST: Int
+```
+
+See [Environment Constants](/api/environments) for details.
+
+### ENVIRONMENT_PRODUCTION
+
+Environment constant for the production environment.
+
+```kotlin
+const val ENVIRONMENT_PRODUCTION: Int
+```
+
+See [Environment Constants](/api/environments) for details.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Initialize Early">
+    Configure the SDK (merchant ID, environment) in your Application class or early in your app lifecycle before initiating collection.
+    
+    ```kotlin
+    class MyApplication : Application() {
+        override fun onCreate() {
+            super.onCreate()
+            KountSDK.setMerchantId("999999")
+            KountSDK.setEnvironment(KountSDK.ENVIRONMENT_TEST)
+            KountSDK.setCollectAnalytics(true)
+        }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Request Location Permissions">
+    For optimal data collection, request location permissions before calling `collectForSession()`.
+    
+    ```kotlin
+    if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+        != PackageManager.PERMISSION_GRANTED) {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+            KountSDK.REQUEST_PERMISSION_LOCATION
+        )
+    } else {
+        KountSDK.collectForSession(this, onSuccess, onFailure)
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Session ID">
+    Always send the session ID to your backend after successful collection. Your backend should include this ID when making fraud evaluation requests to Kount.
+    
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            // Send to backend
+            apiService.submitTransaction(sessionId, orderData)
+        },
+        { sessionId, error ->
+            // Log error and potentially retry
+            Log.e("Kount", "Collection failed: $error")
+        }
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Check Collection Status">
+    Monitor the collection status to provide feedback to users or handle edge cases.
+    
+    ```kotlin
+    val status = KountSDK.getCollectionStatus()
+    when (status) {
+        CollectionStatus.IN_PROGRESS.toString() -> showLoading()
+        CollectionStatus.COMPLETED.toString() -> enableCheckout()
+        CollectionStatus.FAILED.toString() -> handleFailure()
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Related
+
+- [CollectionStatus](/api/collection-status) - Status values returned by `getCollectionStatus()`
+- [Environment Constants](/api/environments) - Environment configuration options
+- [Success Callback](/api/success-callback) - Success callback signature details
+- [Failure Callback](/api/failure-callback) - Failure callback signature details

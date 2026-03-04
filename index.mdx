@@ -1,97 +1,299 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: Kount Android SDK
+description: Integrate fraud detection and device data collection into your Android applications
+mode: custom
 ---
 
-## Setting up
+<div className="relative overflow-hidden bg-gradient-to-br from-[#0b2544] via-[#046cd3] to-[#1098c9] py-20">
+  <div className="absolute inset-0 bg-black/30"></div>
+  <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
+    <div className="lg:grid lg:grid-cols-12 lg:gap-8 items-center">
+      <div className="lg:col-span-7">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
+          Kount Android SDK Documentation
+        </h1>
+        <p className="text-lg sm:text-xl text-gray-100 max-w-2xl mb-8">
+          Protect your Android app from fraud with Kount's powerful device data collection and session tracking SDK. Get started in minutes with support for both Java and Kotlin.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <a
+            href="/quickstart"
+            className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-[#046cd3] font-semibold hover:bg-gray-100 transition-colors"
+          >
+            Get Started
+            <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+          <a
+            href="/api/kount-sdk"
+            className="inline-flex items-center px-6 py-3 rounded-lg border border-white/30 bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors"
+          >
+            API Reference
+          </a>
+        </div>
+      </div>
+      <div className="hidden lg:block lg:col-span-5">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-tr from-[#1098c9]/20 to-transparent rounded-2xl"></div>
+          <svg className="w-full h-auto text-white/10" viewBox="0 0 400 400" fill="none">
+            <rect x="50" y="50" width="300" height="300" rx="20" stroke="currentColor" strokeWidth="2"/>
+            <circle cx="200" cy="150" r="40" stroke="currentColor" strokeWidth="2"/>
+            <path d="M150 220 L250 220 M150 260 L250 260 M150 300 L200 300" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-4">
+    Quick start
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Get up and running with the Kount Android SDK in three simple steps.
+  </p>
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+  <Steps>
+    <Step title="Add the SDK to your project">
+      Add the Kount Data Collector dependency to your app's `build.gradle` file:
 
-## Make it yours
+      ```gradle build.gradle
+      dependencies {
+          implementation 'com.kount:datacollector:5.0.0'
+      }
+      ```
 
-Design a docs site that looks great and empowers your users.
+      Add JitPack repository to your project's `build.gradle`:
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
+      ```gradle build.gradle
+      repositories {
+          maven { url 'https://jitpack.io' }
+      }
+      ```
+    </Step>
+
+    <Step title="Configure the SDK">
+      Initialize the SDK in your Activity with your merchant ID and environment:
+
+      ```kotlin MainActivity.kt
+      import com.kount.api.KountSDK
+
+      class MainActivity : AppCompatActivity() {
+          override fun onCreate(savedInstanceState: Bundle?) {
+              super.onCreate(savedInstanceState)
+              
+              // Configure the SDK
+              KountSDK.setMerchantId("999999")
+              KountSDK.setEnvironment(KountSDK.ENVIRONMENT_TEST)
+              KountSDK.setCollectAnalytics(true)
+          }
+      }
+      ```
+    </Step>
+
+    <Step title="Collect device data">
+      Start data collection when you need to track a session:
+
+      ```kotlin
+      KountSDK.collectForSession(
+          this,
+          { sessionId ->
+              Log.d("Kount", "Collection completed with session ID: $sessionId")
+              // Send sessionId to your backend
+          },
+          { sessionId, error ->
+              Log.e("Kount", "Collection failed: $error")
+          }
+      )
+      ```
+
+      The SDK returns a unique session ID that you send to your backend for fraud analysis.
+    </Step>
+  </Steps>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-4">
+    Explore the SDK
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Learn about key features and integration patterns.
+  </p>
+
+  <CardGroup cols={2}>
     <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+      title="Java integration"
+      icon="mug-hot"
+      href="/guides/java-integration"
+    >
+      Integrate the SDK in Java-based Android applications
+    </Card>
+    <Card
+      title="Kotlin integration"
+      icon="code"
+      href="/guides/kotlin-integration"
+    >
+      Modern Kotlin integration with coroutines and lambdas
+    </Card>
+    <Card
+      title="Permission handling"
+      icon="shield-check"
+      href="/guides/permissions"
+    >
+      Request location permissions for enhanced data collection
+    </Card>
+    <Card
+      title="Data collection"
+      icon="database"
+      href="/concepts/data-collection"
+    >
+      Understand what data is collected and how it's used
+    </Card>
+    <Card
+      title="Session management"
+      icon="fingerprint"
+      href="/concepts/session-management"
+    >
+      Track user sessions with unique identifiers
+    </Card>
+    <Card
+      title="Analytics collection"
+      icon="chart-line"
+      href="/concepts/analytics"
+    >
+      Enable optional behavioral analytics features
+    </Card>
+  </CardGroup>
+</div>
 
-## Create beautiful pages
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-4">
+    Key features
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Everything you need to protect your Android app from fraud.
+  </p>
 
-Everything you need to create world-class documentation.
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="p-6 rounded-2xl border dark:border-[#27272a] border-gray-200 dark:bg-[#1a1d27] bg-gray-50 hover:dark:border-[#046cd3] hover:border-[#046cd3] transition-colors">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-lg bg-[#046cd3]/10 dark:bg-[#046cd3]/20 flex items-center justify-center">
+          <svg className="w-6 h-6 text-[#046cd3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold dark:text-gray-100 text-gray-900">Device fingerprinting</h3>
+      </div>
+      <p className="text-sm dark:text-gray-400 text-gray-600">
+        Collect comprehensive device data including hardware, software, network, and location information for accurate fraud detection.
+      </p>
+    </div>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+    <div className="p-6 rounded-2xl border dark:border-[#27272a] border-gray-200 dark:bg-[#1a1d27] bg-gray-50 hover:dark:border-[#046cd3] hover:border-[#046cd3] transition-colors">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-lg bg-[#046cd3]/10 dark:bg-[#046cd3]/20 flex items-center justify-center">
+          <svg className="w-6 h-6 text-[#046cd3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold dark:text-gray-100 text-gray-900">Session tracking</h3>
+      </div>
+      <p className="text-sm dark:text-gray-400 text-gray-600">
+        Generate unique session IDs for every data collection event, making it easy to correlate device data with transactions.
+      </p>
+    </div>
 
-## Need inspiration?
+    <div className="p-6 rounded-2xl border dark:border-[#27272a] border-gray-200 dark:bg-[#1a1d27] bg-gray-50 hover:dark:border-[#046cd3] hover:border-[#046cd3] transition-colors">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-lg bg-[#046cd3]/10 dark:bg-[#046cd3]/20 flex items-center justify-center">
+          <svg className="w-6 h-6 text-[#046cd3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold dark:text-gray-100 text-gray-900">Java & Kotlin support</h3>
+      </div>
+      <p className="text-sm dark:text-gray-400 text-gray-600">
+        First-class support for both Java and Kotlin with idiomatic APIs, lambdas, and completion handlers for modern Android development.
+      </p>
+    </div>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+    <div className="p-6 rounded-2xl border dark:border-[#27272a] border-gray-200 dark:bg-[#1a1d27] bg-gray-50 hover:dark:border-[#046cd3] hover:border-[#046cd3] transition-colors">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-lg bg-[#046cd3]/10 dark:bg-[#046cd3]/20 flex items-center justify-center">
+          <svg className="w-6 h-6 text-[#046cd3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold dark:text-gray-100 text-gray-900">Optional analytics</h3>
+      </div>
+      <p className="text-sm dark:text-gray-400 text-gray-600">
+        Enable behavioral analytics to collect UI interaction patterns and user behavior data for enhanced fraud detection.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white mb-4">
+    Resources
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Additional resources to help you integrate and troubleshoot.
+  </p>
+
+  <CardGroup cols={2}>
+    <Card
+      title="Migration guide"
+      icon="arrow-right-arrow-left"
+      href="/resources/migration-guide"
+    >
+      Upgrade from older SDK versions to the latest release
+    </Card>
+    <Card
+      title="Troubleshooting"
+      icon="wrench"
+      href="/resources/troubleshooting"
+    >
+      Solutions to common integration issues and errors
+    </Card>
+    <Card
+      title="Changelog"
+      icon="clock-rotate-left"
+      href="/resources/changelog"
+    >
+      Version history and release notes for all SDK versions
+    </Card>
+    <Card
+      title="Support"
+      icon="life-ring"
+      href="/resources/support"
+    >
+      Get help from the Kount community and support team
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-20 mb-16 max-w-5xl mx-auto px-6">
+  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0b2544] to-[#046cd3] p-12">
+    <div className="absolute inset-0 bg-black/20"></div>
+    <div className="relative text-center">
+      <h2 className="text-3xl font-bold text-white mb-4">
+        Ready to protect your Android app?
+      </h2>
+      <p className="text-lg text-gray-100 mb-8 max-w-2xl mx-auto">
+        Start integrating the Kount Android SDK today and protect your users from fraud in minutes.
+      </p>
+      <a
+        href="/installation"
+        className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-[#046cd3] font-semibold hover:bg-gray-100 transition-colors"
+      >
+        Start integrating
+        <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+        </svg>
+      </a>
+    </div>
+  </div>
+</div>

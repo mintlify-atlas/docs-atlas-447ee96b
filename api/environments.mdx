@@ -1,0 +1,345 @@
+---
+title: 'Environment Constants'
+description: 'Configuration constants for test and production environments'
+---
+
+## Overview
+
+The Kount Android SDK provides environment constants to configure whether the SDK connects to the test (sandbox) or production environment. These constants are used with the `KountSDK.setEnvironment()` method.
+
+## Constants
+
+### ENVIRONMENT_TEST
+
+Configures the SDK to connect to the Kount test environment (sandbox).
+
+```kotlin
+KountSDK.ENVIRONMENT_TEST: Int
+```
+
+Use this environment during development, testing, and QA phases. The test environment allows you to:
+
+- Test your integration without affecting production data
+- Validate your implementation before going live
+- Perform end-to-end testing in a safe environment
+- Debug issues without risk to real transactions
+
+**Example:**
+
+```kotlin
+KountSDK.setEnvironment(KountSDK.ENVIRONMENT_TEST)
+```
+
+```java
+KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_TEST);
+```
+
+### ENVIRONMENT_PRODUCTION
+
+Configures the SDK to connect to the Kount production environment.
+
+```kotlin
+KountSDK.ENVIRONMENT_PRODUCTION: Int
+```
+
+Use this environment only when your application is deployed to production and processing real transactions. The production environment:
+
+- Processes live device data for fraud evaluation
+- Connects to production Kount servers
+- Affects your merchant account metrics and billing
+- Should only be used after thorough testing
+
+**Example:**
+
+```kotlin
+KountSDK.setEnvironment(KountSDK.ENVIRONMENT_PRODUCTION)
+```
+
+```java
+KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_PRODUCTION);
+```
+
+<Warning>
+Never use `ENVIRONMENT_PRODUCTION` during development or testing. Always start with `ENVIRONMENT_TEST` and only switch to production when deploying your app.
+</Warning>
+
+## Usage
+
+### Configuration
+
+Set the environment early in your application lifecycle, typically in your `Application` class or before calling `collectForSession()`:
+
+```kotlin
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        
+        KountSDK.setMerchantId("999999")
+        KountSDK.setEnvironment(KountSDK.ENVIRONMENT_TEST)
+        KountSDK.setCollectAnalytics(true)
+    }
+}
+```
+
+```java
+public class MyApplication extends Application {
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        
+        KountSDK.INSTANCE.setMerchantId("999999");
+        KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_TEST);
+        KountSDK.INSTANCE.setCollectAnalytics(true);
+    }
+}
+```
+
+### Build-Specific Configuration
+
+Use build variants or flavors to automatically select the appropriate environment:
+
+**Kotlin Example:**
+
+```kotlin
+class MyApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        
+        val environment = if (BuildConfig.DEBUG) {
+            KountSDK.ENVIRONMENT_TEST
+        } else {
+            KountSDK.ENVIRONMENT_PRODUCTION
+        }
+        
+        KountSDK.setMerchantId(BuildConfig.KOUNT_MERCHANT_ID)
+        KountSDK.setEnvironment(environment)
+    }
+}
+```
+
+**Java Example:**
+
+```java
+public class MyApplication extends Application {
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        
+        int environment = BuildConfig.DEBUG 
+            ? KountSDK.ENVIRONMENT_TEST 
+            : KountSDK.ENVIRONMENT_PRODUCTION;
+        
+        KountSDK.INSTANCE.setMerchantId(BuildConfig.KOUNT_MERCHANT_ID);
+        KountSDK.INSTANCE.setEnvironment(environment);
+    }
+}
+```
+
+### Gradle Configuration
+
+Store environment-specific configuration in your `build.gradle` file:
+
+```groovy
+android {
+    buildTypes {
+        debug {
+            buildConfigField "String", "KOUNT_MERCHANT_ID", '"999999"'
+            buildConfigField "int", "KOUNT_ENVIRONMENT", "${KountSDK.ENVIRONMENT_TEST}"
+        }
+        release {
+            buildConfigField "String", "KOUNT_MERCHANT_ID", '"YOUR_PROD_MERCHANT_ID"'
+            buildConfigField "int", "KOUNT_ENVIRONMENT", "${KountSDK.ENVIRONMENT_PRODUCTION}"
+        }
+    }
+}
+```
+
+Then use it in your code:
+
+```kotlin
+KountSDK.setMerchantId(BuildConfig.KOUNT_MERCHANT_ID)
+KountSDK.setEnvironment(BuildConfig.KOUNT_ENVIRONMENT)
+```
+
+## Environment Comparison
+
+<CardGroup cols={2}>
+  <Card title="Test Environment" icon="flask">
+    **Use for:**
+    - Development
+    - Testing
+    - QA validation
+    - Integration verification
+    
+    **Characteristics:**
+    - Safe sandbox environment
+    - No impact on production
+    - Test merchant accounts
+    - Debug-friendly
+  </Card>
+  
+  <Card title="Production Environment" icon="rocket">
+    **Use for:**
+    - Live applications
+    - Real transactions
+    - Production deployments
+    - Post-release monitoring
+    
+    **Characteristics:**
+    - Live fraud detection
+    - Real merchant accounts
+    - Affects billing
+    - Production SLAs
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always Start with Test">
+    Begin development using `ENVIRONMENT_TEST`. This ensures you don't accidentally send test data to production or incur unexpected costs.
+    
+    ```kotlin
+    // Start here during development
+    KountSDK.setEnvironment(KountSDK.ENVIRONMENT_TEST)
+    ```
+  </Accordion>
+
+  <Accordion title="Use Build Configurations">
+    Automate environment selection based on build type to prevent manual errors.
+    
+    ```kotlin
+    val environment = when (BuildConfig.BUILD_TYPE) {
+        "debug" -> KountSDK.ENVIRONMENT_TEST
+        "release" -> KountSDK.ENVIRONMENT_PRODUCTION
+        else -> KountSDK.ENVIRONMENT_TEST
+    }
+    KountSDK.setEnvironment(environment)
+    ```
+  </Accordion>
+
+  <Accordion title="Verify Before Release">
+    Double-check that your production builds use `ENVIRONMENT_PRODUCTION` and your test builds use `ENVIRONMENT_TEST`.
+    
+    ```kotlin
+    // Log environment for verification
+    val envName = if (BuildConfig.KOUNT_ENVIRONMENT == KountSDK.ENVIRONMENT_TEST) {
+        "TEST"
+    } else {
+        "PRODUCTION"
+    }
+    Log.i("Kount", "Using environment: $envName")
+    ```
+  </Accordion>
+
+  <Accordion title="Separate Merchant IDs">
+    Use different merchant IDs for test and production environments.
+    
+    ```kotlin
+    // build.gradle
+    buildTypes {
+        debug {
+            buildConfigField "String", "MERCHANT_ID", '"999999"' // Test ID
+        }
+        release {
+            buildConfigField "String", "MERCHANT_ID", '"123456"' // Production ID
+        }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Document Environment Setup">
+    Clearly document which environment your team should use for different scenarios.
+    
+    ```kotlin
+    /**
+     * Kount SDK Configuration
+     * 
+     * Environments:
+     * - Local development: ENVIRONMENT_TEST
+     * - Staging: ENVIRONMENT_TEST
+     * - Production: ENVIRONMENT_PRODUCTION
+     */
+    object KountConfig {
+        fun initialize(context: Application) {
+            KountSDK.setMerchantId(getMerchantId())
+            KountSDK.setEnvironment(getEnvironment())
+        }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Complete Example
+
+```kotlin
+class MyApplication : Application() {
+    
+    companion object {
+        private const val TEST_MERCHANT_ID = "999999"
+        private const val PROD_MERCHANT_ID = "123456"
+    }
+    
+    override fun onCreate() {
+        super.onCreate()
+        initializeKount()
+    }
+    
+    private fun initializeKount() {
+        val isProduction = !BuildConfig.DEBUG
+        
+        val merchantId = if (isProduction) PROD_MERCHANT_ID else TEST_MERCHANT_ID
+        val environment = if (isProduction) {
+            KountSDK.ENVIRONMENT_PRODUCTION
+        } else {
+            KountSDK.ENVIRONMENT_TEST
+        }
+        
+        KountSDK.setMerchantId(merchantId)
+        KountSDK.setEnvironment(environment)
+        KountSDK.setCollectAnalytics(true)
+        
+        // Log for verification (remove in production)
+        if (BuildConfig.DEBUG) {
+            Log.i("Kount", "Initialized with merchant: $merchantId, environment: TEST")
+        }
+    }
+}
+```
+
+```java
+public class MyApplication extends Application {
+    
+    private static final String TEST_MERCHANT_ID = "999999";
+    private static final String PROD_MERCHANT_ID = "123456";
+    
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        initializeKount();
+    }
+    
+    private void initializeKount() {
+        boolean isProduction = !BuildConfig.DEBUG;
+        
+        String merchantId = isProduction ? PROD_MERCHANT_ID : TEST_MERCHANT_ID;
+        int environment = isProduction 
+            ? KountSDK.ENVIRONMENT_PRODUCTION 
+            : KountSDK.ENVIRONMENT_TEST;
+        
+        KountSDK.INSTANCE.setMerchantId(merchantId);
+        KountSDK.INSTANCE.setEnvironment(environment);
+        KountSDK.INSTANCE.setCollectAnalytics(true);
+        
+        // Log for verification (remove in production)
+        if (BuildConfig.DEBUG) {
+            Log.i("Kount", "Initialized with merchant: " + merchantId + ", environment: TEST");
+        }
+    }
+}
+```
+
+## Related
+
+- [KountSDK](/api/kount-sdk) - Main SDK class with `setEnvironment()` method
+- [Quick Start](/quickstart) - Getting started guide with initial configuration

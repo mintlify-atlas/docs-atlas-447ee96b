@@ -1,0 +1,529 @@
+---
+title: "Troubleshooting"
+description: "Common issues and solutions for the Kount Android SDK"
+icon: "wrench"
+---
+
+This guide covers common issues you may encounter when integrating or using the Kount Android SDK, along with their solutions.
+
+## Installation Issues
+
+<AccordionGroup>
+  <Accordion title="Gradle dependency resolution fails" icon="gradle">
+    ### Problem
+    
+    The SDK fails to download or resolve during Gradle sync.
+
+    ### Solution
+
+    1. Verify you have the correct repository configured in your `build.gradle`:
+
+    ```gradle
+    repositories {
+      google()
+      mavenCentral()
+      // Add Kount's repository if needed
+    }
+    ```
+
+    2. Check your SDK version exists and is correct:
+
+    ```gradle
+    dependencies {
+      implementation 'com.kount.mobile:kount-mobile-sdk:4.3.2'
+    }
+    ```
+
+    3. Clean and rebuild your project:
+
+    ```bash
+    ./gradlew clean build
+    ```
+  </Accordion>
+
+  <Accordion title="Instant App library dependency error" icon="triangle-exclamation">
+    ### Problem
+    
+    Build fails with Instant App library errors, even though you're not building an Instant App.
+
+    ### Solution
+
+    <Warning>
+      You must include the Instant App library at compile time, even if you are not building an Instant App.
+    </Warning>
+
+    Add the Instant App library to your dependencies:
+
+    ```gradle
+    dependencies {
+      implementation 'com.google.android.instantapps:instantapps:1.1.0'
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Configuration Issues
+
+<AccordionGroup>
+  <Accordion title="SDK not initialized / NullPointerException" icon="circle-xmark">
+    ### Problem
+    
+    Getting `NullPointerException` or SDK appears not to be initialized.
+
+    ### Solution
+
+    Ensure you initialize the SDK before calling any collection methods:
+
+    <CodeGroup>
+    ```java Java
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+      super.onCreate(savedInstanceState);
+      
+      // Initialize SDK BEFORE any collection calls
+      KountSDK.INSTANCE.setMerchantId("999999");
+      KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_TEST);
+      
+      // Now you can call collection methods
+      KountSDK.INSTANCE.collectForSession(this, successHandler, failureHandler);
+    }
+    ```
+
+    ```kotlin Kotlin
+    override fun onCreate(savedInstanceState: Bundle?) {
+      super.onCreate(savedInstanceState)
+      
+      // Initialize SDK BEFORE any collection calls
+      KountSDK.setMerchantId("999999")
+      KountSDK.setEnvironment(KountSDK.ENVIRONMENT_TEST)
+      
+      // Now you can call collection methods
+      KountSDK.collectForSession(this, successHandler, failureHandler)
+    }
+    ```
+    </CodeGroup>
+  </Accordion>
+
+  <Accordion title="Merchant ID type mismatch (version 4.3.1+)" icon="input-text">
+    ### Problem
+    
+    Compilation error or type mismatch when setting merchant ID in version 4.3.1+.
+
+    ### Solution
+
+    <Warning>
+      In version 4.3.1+, merchant ID changed from Integer to String.
+    </Warning>
+
+    **Incorrect (old versions)**:
+    ```java
+    int merchantId = 999999;
+    KountSDK.INSTANCE.setMerchantId(merchantId);
+    ```
+
+    **Correct (4.3.1+)**:
+    ```java
+    String merchantId = "999999";
+    KountSDK.INSTANCE.setMerchantId(merchantId);
+    ```
+  </Accordion>
+
+  <Accordion title="Wrong environment - data not appearing" icon="server">
+    ### Problem
+    
+    Data collection appears to work, but no data shows in Kount dashboard.
+
+    ### Solution
+
+    Verify you're using the correct environment:
+
+    ```java
+    // For testing/development
+    KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_TEST);
+    
+    // For production
+    KountSDK.INSTANCE.setEnvironment(KountSDK.ENVIRONMENT_PRODUCTION);
+    ```
+
+    <Note>
+      Make sure your merchant ID is valid for the environment you're using.
+    </Note>
+  </Accordion>
+</AccordionGroup>
+
+## Permission Issues
+
+<AccordionGroup>
+  <Accordion title="Location permission not being requested" icon="location-dot">
+    ### Problem
+    
+    The app doesn't request location permission, and location data isn't collected.
+
+    ### Solution
+
+    1. Add location permissions to your `AndroidManifest.xml`:
+
+    ```xml
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    ```
+
+    2. Request permission at runtime for Android 6.0+ (API 23+):
+
+    <CodeGroup>
+    ```java Java
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      if (ContextCompat.checkSelfPermission(this, 
+          Manifest.permission.ACCESS_FINE_LOCATION) 
+          != PackageManager.PERMISSION_GRANTED) {
+        
+        ActivityCompat.requestPermissions(this,
+          new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+          KountSDK.REQUEST_PERMISSION_LOCATION);
+      }
+    }
+    ```
+
+    ```kotlin Kotlin
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      if (ContextCompat.checkSelfPermission(this,
+          Manifest.permission.ACCESS_FINE_LOCATION)
+          != PackageManager.PERMISSION_GRANTED) {
+        
+        ActivityCompat.requestPermissions(this,
+          arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+          KountSDK.REQUEST_PERMISSION_LOCATION)
+      }
+    }
+    ```
+    </CodeGroup>
+
+    3. Handle the permission result:
+
+    <CodeGroup>
+    ```java Java
+    @Override
+    public void onRequestPermissionsResult(int requestCode, 
+        String[] permissions, int[] grantResults) {
+      
+      if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+        if (grantResults.length > 0 && 
+            grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+          // Permission granted - collect data
+          KountSDK.INSTANCE.collectForSession(this, 
+            successHandler, failureHandler);
+        } else {
+          // Permission denied - collect without location
+          Log.w("Kount", "Location permission denied");
+        }
+      }
+      super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
+    ```
+
+    ```kotlin Kotlin
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+      if (requestCode == KountSDK.REQUEST_PERMISSION_LOCATION) {
+        if (grantResults.isNotEmpty() && 
+            grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+          // Permission granted - collect data
+          KountSDK.collectForSession(this, successHandler, failureHandler)
+        } else {
+          // Permission denied - collect without location
+          Log.w("Kount", "Location permission denied")
+        }
+      }
+      super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+    ```
+    </CodeGroup>
+  </Accordion>
+
+  <Accordion title="Internet permission missing" icon="wifi">
+    ### Problem
+    
+    Data collection fails or times out.
+
+    ### Solution
+
+    Add internet permission to your `AndroidManifest.xml`:
+
+    ```xml
+    <uses-permission android:name="android.permission.INTERNET" />
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Collection Issues
+
+<AccordionGroup>
+  <Accordion title="Collection never completes / times out" icon="clock">
+    ### Problem
+    
+    The completion handlers are never called, or collection times out.
+
+    ### Solution
+
+    1. **Check internet connectivity**: Ensure the device has an active internet connection.
+
+    2. **Verify permissions**: Make sure `INTERNET` permission is in your manifest.
+
+    3. **Check SDK version**: Versions 4.2.0 and 4.2.1 had a race condition. Upgrade to 4.2.2+:
+
+    ```gradle
+    implementation 'com.kount.mobile:kount-mobile-sdk:4.3.2'
+    ```
+
+    4. **Single Page Applications**: If you're running a SPA or don't transition to a second view, make sure you're on version 4.1.3+ which fixed data transmission delays.
+
+    5. **Check collection status**:
+
+    ```java
+    String status = KountSDK.INSTANCE.getCollectionStatus();
+    Log.d("Kount", "Collection status: " + status);
+    ```
+  </Accordion>
+
+  <Accordion title="Session ID is null or empty" icon="id-card">
+    ### Problem
+    
+    The session ID returned is null or empty.
+
+    ### Solution
+
+    **Version 4.3.1+**: The SDK automatically generates a session ID if one is not provided.
+
+    <CodeGroup>
+    ```java Java
+    // SDK will auto-generate session ID
+    KountSDK.INSTANCE.collectForSession(
+      this,
+      sessionId -> {
+        // sessionId will be auto-generated if needed
+        Log.d("Kount", "Session ID: " + sessionId);
+        return null;
+      },
+      (sessionId, error) -> {
+        Log.e("Kount", "Error: " + error);
+        return null;
+      }
+    );
+    ```
+
+    ```kotlin Kotlin
+    // SDK will auto-generate session ID
+    KountSDK.collectForSession(
+      this,
+      { sessionId ->
+        // sessionId will be auto-generated if needed
+        Log.d("Kount", "Session ID: $sessionId")
+      },
+      { sessionId, error ->
+        Log.e("Kount", "Error: $error")
+      }
+    )
+    ```
+    </CodeGroup>
+
+    **Older versions**: You may need to provide your own session ID:
+
+    ```java
+    String customSessionId = UUID.randomUUID().toString();
+    // Pass to collection method
+    ```
+  </Accordion>
+
+  <Accordion title="Collection fails immediately" icon="ban">
+    ### Problem
+    
+    The failure handler is called immediately when starting collection.
+
+    ### Solution
+
+    1. **Check initialization**: Ensure SDK is properly initialized before collection.
+
+    2. **Verify merchant ID**: Make sure your merchant ID is valid:
+
+    ```java
+    String merchantId = "999999"; // Use your actual merchant ID
+    KountSDK.INSTANCE.setMerchantId(merchantId);
+    ```
+
+    3. **Check error message**: Log the error in your failure handler:
+
+    ```java
+    (sessionId, error) -> {
+      Log.e("Kount", "Collection failed: " + error + ", SessionID: " + sessionId);
+      return null;
+    }
+    ```
+
+    4. **Context issues**: Ensure you're passing a valid Activity context, not Application context.
+  </Accordion>
+
+  <Accordion title="Data transmission delayed" icon="tower-cell">
+    ### Problem
+    
+    Collection completes but data doesn't transmit to Kount servers immediately.
+
+    ### Solution
+
+    **If using version 4.1.2 or older**: Upgrade to version 4.1.3+ which fixes transmission delays:
+
+    ```gradle
+    implementation 'com.kount.mobile:kount-mobile-sdk:4.3.2'
+    ```
+
+    This issue particularly affected:
+    - Single Page Applications (SPAs)
+    - Apps with Analytics enabled
+    - Apps that don't transition to a second view before requesting data
+  </Accordion>
+</AccordionGroup>
+
+## Analytics Issues
+
+<AccordionGroup>
+  <Accordion title="Memory leak with many Activities" icon="memory">
+    ### Problem
+    
+    App experiences memory leaks when Analytics is disabled and many Activities are created.
+
+    ### Solution
+
+    Upgrade to version 4.2.4+ which fixes this memory leak:
+
+    ```gradle
+    implementation 'com.kount.mobile:kount-mobile-sdk:4.3.2'
+    ```
+
+    If you can't upgrade, ensure Analytics is enabled:
+
+    ```java
+    KountSDK.INSTANCE.setCollectAnalytics(true);
+    ```
+  </Accordion>
+
+  <Accordion title="UI elements not being collected" icon="mobile-screen">
+    ### Problem
+    
+    Analytics feature (UI element collection) doesn't seem to work.
+
+    ### Solution
+
+    1. **Check SDK version**: UI element collection was added in 4.1.0.
+
+    2. **Enable Analytics**:
+
+    ```java
+    KountSDK.INSTANCE.setCollectAnalytics(true);
+    ```
+
+    3. **Check Android version**: Some features require Android 10+ (API 29) for full functionality.
+
+    <Note>
+      Analytics collection defaults to true in version 4.1.0+.
+    </Note>
+  </Accordion>
+</AccordionGroup>
+
+## Version-Specific Issues
+
+<AccordionGroup>
+  <Accordion title="CWE-926 vulnerability (versions before 4.3.2)" icon="shield-halved">
+    ### Problem
+    
+    Security scan reports CWE-926 vulnerability.
+
+    ### Solution
+
+    Upgrade to version 4.3.2 or later which patches this vulnerability:
+
+    ```gradle
+    implementation 'com.kount.mobile:kount-mobile-sdk:4.3.2'
+    ```
+  </Accordion>
+
+  <Accordion title="NullPointer when connecting/disconnecting charger (4.1.1 and older)" icon="plug">
+    ### Problem
+    
+    App crashes with NullPointerException when charging cable is connected or disconnected.
+
+    ### Solution
+
+    Upgrade to version 4.1.2+ which fixes this issue:
+
+    ```gradle
+    implementation 'com.kount.mobile:kount-mobile-sdk:4.3.2'
+    ```
+  </Accordion>
+
+  <Accordion title="Collections not starting in single-Activity apps (4.2.0 and older)" icon="stop">
+    ### Problem
+    
+    Collections don't start if the user doesn't switch Activities.
+
+    ### Solution
+
+    Upgrade to version 4.2.1+ which fixes this timing issue:
+
+    ```gradle
+    implementation 'com.kount.mobile:kount-mobile-sdk:4.3.2'
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Debugging Tips
+
+<Steps>
+  <Step title="Enable Logging">
+    Add logging to track SDK behavior:
+
+    ```java
+    Log.d("Kount", "Merchant ID: " + merchantId);
+    Log.d("Kount", "Environment: " + environment);
+    Log.d("Kount", "Collection status: " + KountSDK.INSTANCE.getCollectionStatus());
+    ```
+  </Step>
+
+  <Step title="Check Collection Status">
+    Monitor the collection status throughout the lifecycle:
+
+    ```java
+    String status = KountSDK.INSTANCE.getCollectionStatus();
+    Log.d("Kount", "Current status: " + status);
+    ```
+  </Step>
+
+  <Step title="Test on Multiple Devices">
+    Test on different Android versions:
+    - Minimum supported version (API 26 for latest SDK)
+    - Android 10+ for full features
+    - Different manufacturers (Samsung, Google, etc.)
+  </Step>
+
+  <Step title="Review Logcat Output">
+    Filter logcat for Kount-related messages:
+
+    ```bash
+    adb logcat | grep -i kount
+    ```
+  </Step>
+</Steps>
+
+## Still Having Issues?
+
+If you're still experiencing problems:
+
+1. Review the [Migration Guide](/resources/migration-guide) if you recently upgraded
+2. Check the [Changelog](/resources/changelog) for version-specific issues
+3. Visit [Kount Community](https://support.kount.com/hc/en-us/community/topics)
+4. Email support@kount.com with:
+   - SDK version
+   - Android version and device model
+   - Relevant code snippets
+   - Logcat output showing the issue

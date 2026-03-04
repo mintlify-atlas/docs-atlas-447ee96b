@@ -1,0 +1,379 @@
+---
+title: "Completion Handlers"
+description: "Using success and failure callbacks with the collectForSession method"
+---
+
+## Overview
+
+Starting in version 4.3.0, the Kount Android SDK provides completion handlers that allow you to execute custom code immediately after data collection completes. This feature gives you precise control over the timing of your application flow based on collection success or failure.
+
+<Info>
+**Feature Added:** Version 4.3.0
+
+Completion handlers help you perform any action of your choice right after DDC (Device Data Collection) completes.
+</Info>
+
+## The collectForSession Method
+
+The `collectForSession()` method accepts three parameters:
+
+1. **Context** - Your Activity or Application context
+2. **Success Handler** - Called when collection completes successfully
+3. **Failure Handler** - Called when collection fails
+
+### Method Signature
+
+<CodeGroup>
+```kotlin Kotlin
+KountSDK.collectForSession(
+    context: Context,
+    onSuccess: (sessionId: String) -> Unit,
+    onFailure: (sessionId: String, error: String) -> Unit
+)
+```
+
+```java Java
+KountSDK.INSTANCE.collectForSession(
+    Context context,
+    Function1<String, Unit> onSuccess,
+    Function2<String, String, Unit> onFailure
+)
+```
+</CodeGroup>
+
+## Success Handler
+
+The success handler is invoked when data collection completes successfully. It receives the session ID as a parameter.
+
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            // Collection succeeded!
+            Log.d("TAG", "Collection completed with session ID: $sessionId")
+            Log.d("TAG", "Status: ${KountSDK.getCollectionStatus()}")
+            
+            // Now you can:
+            // - Enable checkout buttons
+            // - Navigate to next screen
+            // - Send sessionId to your backend
+            // - Update UI to show success
+        },
+        { sessionId, error ->
+            // Handle failure...
+        }
+    )
+    ```
+  </Tab>
+
+  <Tab title="Java">
+    ```java
+    KountSDK.INSTANCE.collectForSession(
+        this,
+        (sessionId) -> {
+            // Collection succeeded!
+            Log.d("TAG", "Collection completed with session ID: " + sessionId);
+            Log.d("TAG", "Status: " + KountSDK.INSTANCE.getCollectionStatus());
+            
+            // Now you can:
+            // - Enable checkout buttons
+            // - Navigate to next screen
+            // - Send sessionId to your backend
+            // - Update UI to show success
+            return null;
+        },
+        (sessionId, error) -> {
+            // Handle failure...
+            return null;
+        }
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## Failure Handler
+
+The failure handler is invoked when data collection fails. It receives both the session ID and an error message.
+
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            // Handle success...
+        },
+        { sessionId, error ->
+            // Collection failed
+            Log.d("TAG", "Collection failed with error: $error")
+            Log.d("TAG", "Session ID: $sessionId")
+            Log.d("TAG", "Status: ${KountSDK.getCollectionStatus()}")
+            
+            // You can:
+            // - Retry collection
+            // - Log the error for debugging
+            // - Proceed without collection (if acceptable)
+            // - Show user-friendly error message
+        }
+    )
+    ```
+  </Tab>
+
+  <Tab title="Java">
+    ```java
+    KountSDK.INSTANCE.collectForSession(
+        this,
+        (sessionId) -> {
+            // Handle success...
+            return null;
+        },
+        (sessionId, error) -> {
+            // Collection failed
+            Log.d("TAG", "Collection failed with error: " + error);
+            Log.d("TAG", "Session ID: " + sessionId);
+            Log.d("TAG", "Status: " + KountSDK.INSTANCE.getCollectionStatus());
+            
+            // You can:
+            // - Retry collection
+            // - Log the error for debugging
+            // - Proceed without collection (if acceptable)
+            // - Show user-friendly error message
+            return null;
+        }
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## Common Use Cases
+
+<AccordionGroup>
+  <Accordion title="Enable Checkout Button After Collection">
+    ```kotlin
+    class CheckoutActivity : AppCompatActivity() {
+        private lateinit var checkoutButton: Button
+
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+            setContentView(R.layout.activity_checkout)
+            
+            checkoutButton = findViewById(R.id.checkoutButton)
+            checkoutButton.isEnabled = false // Disabled initially
+
+            KountSDK.collectForSession(
+                this,
+                { sessionId ->
+                    // Enable button when collection completes
+                    runOnUiThread {
+                        checkoutButton.isEnabled = true
+                        Toast.makeText(this, "Ready to checkout", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                { sessionId, error ->
+                    // Enable anyway but log the error
+                    runOnUiThread {
+                        checkoutButton.isEnabled = true
+                    }
+                    Log.e("TAG", "Collection failed: $error")
+                }
+            )
+        }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Send Session ID to Backend">
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            // Send session ID to your backend
+            sendToBackend(sessionId)
+        },
+        { sessionId, error ->
+            Log.e("TAG", "Failed to collect: $error")
+            // Decide whether to proceed without session ID
+            sendToBackend(sessionId) // You can still send it
+        }
+    )
+
+    private fun sendToBackend(sessionId: String) {
+        // Your API call
+        val request = TransactionRequest(
+            amount = 99.99,
+            kountSessionId = sessionId,
+            // ... other fields
+        )
+        apiService.submitTransaction(request)
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Navigate to Next Screen After Collection">
+    ```kotlin
+    KountSDK.collectForSession(
+        this,
+        { sessionId ->
+            // Collection complete, navigate to payment screen
+            val intent = Intent(this, PaymentActivity::class.java)
+            intent.putExtra("sessionId", sessionId)
+            startActivity(intent)
+        },
+        { sessionId, error ->
+            // Show error dialog but allow user to continue
+            AlertDialog.Builder(this)
+                .setTitle("Collection Warning")
+                .setMessage("Unable to complete security check. Continue anyway?")
+                .setPositiveButton("Continue") { _, _ ->
+                    val intent = Intent(this, PaymentActivity::class.java)
+                    intent.putExtra("sessionId", sessionId)
+                    startActivity(intent)
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Update UI with Collection Status">
+    ```kotlin
+    class MainActivity : AppCompatActivity() {
+        private lateinit var statusTextView: TextView
+        private lateinit var sessionIdTextView: TextView
+
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+            setContentView(R.layout.activity_main)
+            
+            statusTextView = findViewById(R.id.status)
+            sessionIdTextView = findViewById(R.id.sessionId)
+            
+            statusTextView.text = "Collecting data..."
+
+            KountSDK.collectForSession(
+                this,
+                { sessionId ->
+                    runOnUiThread {
+                        statusTextView.text = "Collection Status: ${KountSDK.getCollectionStatus()}"
+                        sessionIdTextView.text = "Session ID: $sessionId"
+                    }
+                },
+                { sessionId, error ->
+                    runOnUiThread {
+                        statusTextView.text = "Collection Failed: $error"
+                        statusTextView.setTextColor(Color.RED)
+                        sessionIdTextView.text = "Session ID: $sessionId"
+                    }
+                }
+            )
+        }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Real-World Example from Sample App
+
+Here's the actual implementation from the Kount sample application:
+
+<Tabs>
+  <Tab title="Kotlin">
+    ```kotlin MainActivity.kt
+    private fun requestLocationPermission(activity: Activity) {
+        if (ContextCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                activity,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                KountSDK.REQUEST_PERMISSION_LOCATION
+            )
+        } else {
+            location.text = "Allowed"
+            
+            // Collect data with completion handlers
+            KountSDK.collectForSession(
+                activity,
+                { sessionId ->
+                    Log.d("TAG", "utils success completed with sessionId $sessionId")
+                    Log.d("TAG", "DDC status is ${KountSDK.getCollectionStatus()}")
+                },
+                { sessionId, error ->
+                    Log.d("TAG", "utils failed with sessionId $error, $sessionId")
+                    Log.d("TAG", "DDC status is ${KountSDK.getCollectionStatus()}")
+                }
+            )
+        }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Java">
+    ```java MainActivity.java
+    private void requestLocationPermission(Activity activity) {
+        if (ContextCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.ACCESS_FINE_LOCATION
+        ) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                activity,
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                KountSDK.REQUEST_PERMISSION_LOCATION
+            );
+        } else {
+            location.setText("Allowed");
+            
+            // Collect data with completion handlers
+            KountSDK.INSTANCE.collectForSession(
+                activity,
+                (sessionId) -> {
+                    Log.d("TAG", "Util success completed with sessionId " + sessionId);
+                    Log.d("TAG", "DDC status is " + KountSDK.INSTANCE.getCollectionStatus());
+                    return null;
+                },
+                (sessionId, error) -> {
+                    Log.d("TAG", "Util failed with sessionId " + error + ", " + sessionId);
+                    Log.d("TAG", "DDC status is " + KountSDK.INSTANCE.getCollectionStatus());
+                    return null;
+                }
+            );
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Always Provide Both Handlers" icon="check">
+    Even if you don't need the failure handler, provide an implementation that logs the error for debugging.
+  </Card>
+  
+  <Card title="Use runOnUiThread for UI Updates" icon="mobile">
+    If you're updating UI elements in the handlers, wrap them in `runOnUiThread` to ensure thread safety.
+  </Card>
+  
+  <Card title="Check Collection Status" icon="magnifying-glass">
+    Use `KountSDK.getCollectionStatus()` inside handlers to get detailed status information.
+  </Card>
+  
+  <Card title="Don't Block User Flow" icon="forward">
+    Consider allowing users to proceed even if collection fails, while logging the failure for investigation.
+  </Card>
+</CardGroup>
+
+<Warning>
+Completion handlers are called on a background thread. Always use `runOnUiThread` or similar mechanisms when updating UI elements.
+</Warning>
+
+## Next Steps
+
+<Card title="Error Handling" icon="circle-exclamation" href="/examples/error-handling">
+  Learn comprehensive error handling strategies for collection failures
+</Card>
