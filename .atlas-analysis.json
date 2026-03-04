@@ -1,0 +1,110 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Kount Android SDK",
+  "projectDescription": "Android SDK for integrating Kount's fraud detection and device data collection into Android applications",
+  "theme": "palm",
+  "primaryColor": "#046cd3",
+  "lightColor": "#1098c9",
+  "darkColor": "#0b2544",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Integration Guides",
+            "pages": [
+              "guides/java-integration",
+              "guides/kotlin-integration",
+              "guides/permissions",
+              "guides/configuration"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/data-collection",
+              "concepts/session-management",
+              "concepts/analytics",
+              "concepts/environments"
+            ]
+          },
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/basic-setup",
+              "examples/completion-handlers",
+              "examples/error-handling"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "SDK Classes",
+            "pages": [
+              "api/kount-sdk",
+              "api/collection-status",
+              "api/environments"
+            ]
+          },
+          {
+            "group": "Callbacks",
+            "pages": [
+              "api/success-callback",
+              "api/failure-callback"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Resources",
+        "groups": [
+          {
+            "group": "Additional Resources",
+            "pages": [
+              "resources/migration-guide",
+              "resources/troubleshooting",
+              "resources/changelog",
+              "resources/support"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Device data collection for fraud prevention",
+    "Session-based tracking with unique session IDs",
+    "Location data collection with permission handling",
+    "Analytics collection capabilities",
+    "Multiple environment support (Test/Production)",
+    "Completion handlers for collection status",
+    "Support for both Java and Kotlin",
+    "Instant Apps compatibility"
+  ],
+  "publicApiSurface": [
+    "KountSDK.setMerchantId()",
+    "KountSDK.setEnvironment()",
+    "KountSDK.setCollectAnalytics()",
+    "KountSDK.collectForSession()",
+    "KountSDK.getSessionId()",
+    "KountSDK.getCollectionStatus()",
+    "KountSDK.ENVIRONMENT_TEST",
+    "KountSDK.ENVIRONMENT_PRODUCTION",
+    "KountSDK.REQUEST_PERMISSION_LOCATION",
+    "CollectionStatus.COMPLETED",
+    "CollectionStatus.FAILED",
+    "CollectionStatus.IN_PROGRESS"
+  ]
+}
