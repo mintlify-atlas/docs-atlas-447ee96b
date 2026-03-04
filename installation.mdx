@@ -63,7 +63,7 @@ Add the Kount SDK and required dependencies to your app-level `build.gradle` fil
 ```groovy build.gradle (Module: app)
 dependencies {
     // Kount Data Collector SDK
-    implementation 'com.github.Kount:kount-android-sdk:4.3.2'
+    implementation 'com.kount:datacollector:5.0.0'
     
     // Required: Instant Apps library (even if not building an Instant App)
     implementation 'com.google.android.instantapps:instantapps:1.1.0'
@@ -83,7 +83,7 @@ dependencies {
 ```kotlin build.gradle.kts (Module: app)
 dependencies {
     // Kount Data Collector SDK
-    implementation("com.github.Kount:kount-android-sdk:4.3.2")
+    implementation("com.kount:datacollector:5.0.0")
     
     // Required: Instant Apps library (even if not building an Instant App)
     implementation("com.google.android.instantapps:instantapps:1.1.0")
@@ -102,7 +102,7 @@ dependencies {
 </CodeGroup>
 
 <Note>
-  Replace `4.3.2` with the latest SDK version. Check the [changelog](https://github.com/Kount/kount-android-sdk/blob/master/CHANGELOG.md) for the most recent release.
+  The current version is `5.0.0`. Check the [changelog](/resources/changelog) for the most recent release notes.
 </Note>
 
 ## Configure Minimum SDK Version
